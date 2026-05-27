@@ -45,45 +45,45 @@ describe('DashboardComponent', () => {
 
   describe('criticalCount', () => {
     it('returns 0 when no fields', () => {
-      component.fields = [];
+      component.fields.set([]);
       expect(component.criticalCount()).toBe(0);
     });
 
     it('counts high and critical stress fields', () => {
-      component.fields = [
+      component.fields.set([
         makeField({ stressLabel: 'low' }),
         makeField({ stressLabel: 'high' }),
         makeField({ stressLabel: 'critical' }),
         makeField({ stressLabel: 'moderate' }),
-      ];
+      ]);
       expect(component.criticalCount()).toBe(2);
     });
 
     it('returns 0 when all fields are low/moderate', () => {
-      component.fields = [
+      component.fields.set([
         makeField({ stressLabel: 'low' }),
         makeField({ stressLabel: 'moderate' }),
-      ];
+      ]);
       expect(component.criticalCount()).toBe(0);
     });
   });
 
   describe('avgYield', () => {
     it('returns em-dash when no fields', () => {
-      component.fields = [];
+      component.fields.set([]);
       expect(component.avgYield()).toBe('—');
     });
 
     it('averages predicted yield across fields in t/ha', () => {
-      component.fields = [
+      component.fields.set([
         makeField({ predictedYieldKgPerHa: 4000 }),
         makeField({ predictedYieldKgPerHa: 6000 }),
-      ];
+      ]);
       expect(component.avgYield()).toBe('5.00');
     });
 
     it('handles a single field', () => {
-      component.fields = [makeField({ predictedYieldKgPerHa: 3500 })];
+      component.fields.set([makeField({ predictedYieldKgPerHa: 3500 })]);
       expect(component.avgYield()).toBe('3.50');
     });
   });

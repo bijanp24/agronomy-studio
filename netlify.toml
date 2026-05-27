@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "dist/agronomy-dashboard/browser"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/field-api/*"
+  to = "/.netlify/functions/field-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/weather-api/*"
+  to = "/.netlify/functions/weather-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
