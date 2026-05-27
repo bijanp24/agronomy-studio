@@ -86,7 +86,7 @@ describe('GisComponent filter', () => {
       makeFeature('grape',  'zone-b', 'b2'),
     ]);
     component.selectedZone.set('zone-a');
-    expect(component.filteredCount).toBe(component.filteredAll().length);
+    expect(component.filteredCount()).toBe(component.filteredAll().length);
   });
 
   it('caps filtered to 150', () => {
@@ -95,6 +95,6 @@ describe('GisComponent filter', () => {
     );
     component.features.set(features);
     expect(component.filtered().length).toBe(150);
-    expect(component.filteredCount).toBe(200);
+    expect(component.filteredCount()).toBe(200);
   });
 });
