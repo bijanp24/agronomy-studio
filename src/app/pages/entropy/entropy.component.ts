@@ -53,7 +53,6 @@ export class EntropyComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.fetch();
-    this.loadHistory();
   }
 
   ngOnDestroy() {
