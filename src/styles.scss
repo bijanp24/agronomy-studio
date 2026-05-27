@@ -26,3 +26,41 @@ mat-card { border-radius: 10px !important; }
 
 /* Thin scrollbars */
 * { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+
+/* Brand tokens */
+:root {
+  --color-brand-dark:   #1b3a2d;
+  --color-brand-accent: #4ade80;
+  --color-muted:        #5b6677;
+  --color-bg:           #f0f2f5;
+}
+
+/* Shared page layout */
+.page-header {
+  margin-bottom: 24px;
+  h1 { margin: 0; font-size: 24px; font-weight: 700; color: var(--color-brand-dark); }
+  .page-sub { margin: 4px 0 0; color: var(--color-muted); font-size: 14px; }
+}
+
+/* Shared error state */
+.error-card mat-card-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b42318;
+}
+
+/* Confidence chip — shared across dashboard and fields */
+.conf-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  &.conf-high   { background: #dcfce7; color: #14532d; }
+  &.conf-medium { background: #fef3c7; color: #78350f; }
+  &.conf-low    { background: #fee2e2; color: #7f1d1d; }
+}
+
+/* Generic utility */
+.capitalize { text-transform: capitalize; }

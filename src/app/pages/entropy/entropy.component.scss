@@ -1,9 +1,3 @@
-.page-header {
-  margin-bottom: 24px;
-  h1 { margin: 0; font-size: 24px; font-weight: 700; color: #1b3a2d; }
-  .page-sub { margin: 4px 0 0; color: #5b6677; font-size: 14px; }
-}
-
 .entropy-layout {
   display: grid;
   grid-template-columns: 1fr 320px;
@@ -24,8 +18,6 @@
 
 .load-bar { margin: 8px 0; }
 
-.error-card mat-card-content { display: flex; align-items: center; gap: 8px; color: #b42318; }
-
 .entropy-val-card {
   margin-top: 16px;
   text-align: center;
@@ -40,8 +32,8 @@
   .entropy-loc { font-size: 11px; color: #5b6677; }
 }
 
-::ng-deep .entropy-bar .mdc-linear-progress__bar-inner { border-color: #7c3aed !important; }
-::ng-deep .gauge-bar .mdc-linear-progress__bar-inner { border-color: #16803c !important; }
+.entropy-bar { --mdc-linear-progress-active-indicator-color: #7c3aed; }
+.gauge-bar   { --mdc-linear-progress-active-indicator-color: #16803c; }
 
 .outcomes-grid {
   display: grid;
