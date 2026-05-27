@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
@@ -31,7 +32,13 @@ interface NavItem {
   styleUrl: './app.scss',
 })
 export class App {
-  private router = inject(Router);
+  private router      = inject(Router);
+  private breakpoints = inject(BreakpointObserver);
+
+  readonly isMobile = toSignal(
+    this.breakpoints.observe(Breakpoints.Handset).pipe(map(r => r.matches)),
+    { initialValue: false }
+  );
 
   readonly title = 'Field Intelligence OS';
   readonly subtitle = 'California Agronomy Platform';

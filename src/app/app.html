@@ -1,6 +1,6 @@
 <mat-sidenav-container class="app-container">
 
-  <mat-sidenav mode="side" opened class="app-sidenav">
+  <mat-sidenav #sidenav [mode]="isMobile() ? 'over' : 'side'" [opened]="!isMobile()" class="app-sidenav">
     <div class="sidenav-header">
       <mat-icon class="brand-icon">eco</mat-icon>
       <div>
@@ -29,6 +29,11 @@
 
   <mat-sidenav-content class="app-content">
     <mat-toolbar class="app-toolbar" color="primary">
+      @if (isMobile()) {
+        <button mat-icon-button (click)="sidenav.toggle()" aria-label="Toggle navigation">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
       <span class="toolbar-page-title">{{ currentPageTitle() }}</span>
       <span class="toolbar-spacer"></span>
       <span class="region-chip">US-CA · San Joaquin Valley</span>
