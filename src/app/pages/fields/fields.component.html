@@ -11,6 +11,15 @@
   </mat-card>
 }
 
+@if (!loading && !error && !details.length) {
+  <mat-card class="empty-card">
+    <mat-card-content>
+      <mat-icon>grass</mat-icon>
+      No fields found. Check that the field-intelligence server is returning data.
+    </mat-card-content>
+  </mat-card>
+}
+
 <mat-accordion multi>
   @for (d of details; track d.field.id) {
     <mat-expansion-panel class="field-panel">
