@@ -25,9 +25,9 @@
       </mat-card-content>
     </mat-card>
 
-    @if (error) {
+    @if (hasError) {
       <mat-card class="error-card">
-        <mat-card-content><mat-icon color="warn">error_outline</mat-icon> {{ error }}</mat-card-content>
+        <mat-card-content><mat-icon color="warn">error_outline</mat-icon> Could not load entropy — check the dev servers.</mat-card-content>
       </mat-card>
     }
 

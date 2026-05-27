@@ -7,16 +7,16 @@
   <mat-progress-bar mode="indeterminate" />
 }
 
-@if (error) {
+@if (hasError) {
   <mat-card class="error-card">
     <mat-card-content>
       <mat-icon color="warn">error_outline</mat-icon>
-      {{ error }}
+      Could not load dashboard data — check the dev servers.
     </mat-card-content>
   </mat-card>
 }
 
-@if (!loading && !error) {
+@if (!loading && !hasError) {
   <!-- KPI strip -->
   <div class="kpi-row">
     <mat-card class="kpi-card">
