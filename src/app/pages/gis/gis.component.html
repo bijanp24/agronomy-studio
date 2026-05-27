@@ -41,6 +41,23 @@
     </mat-card-content>
   </mat-card>
 
+  <!-- Map -->
+  <mat-card class="map-card">
+    <div #mapEl class="map-container"></div>
+    <div class="map-legend">
+      @for (entry of [
+        { label: 'Almond', color: '#d97706' }, { label: 'Grape', color: '#7c3aed' },
+        { label: 'Tomato', color: '#dc2626' }, { label: 'Cotton', color: '#6b7280' },
+        { label: 'Wheat',  color: '#ca8a04' }, { label: 'Corn',   color: '#16a34a' },
+        { label: 'Other',  color: '#3b82f6' }
+      ]; track entry.label) {
+        <span class="legend-item">
+          <span class="legend-dot" [style.background]="entry.color"></span>{{ entry.label }}
+        </span>
+      }
+    </div>
+  </mat-card>
+
   <!-- Table -->
   <mat-card class="table-card">
     <mat-card-content>
