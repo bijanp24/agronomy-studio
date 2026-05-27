@@ -45,13 +45,6 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  stressBarColor(score: number): string {
-    if (score < 25) return '#16803c';
-    if (score < 50) return '#b45309';
-    if (score < 75) return '#dc2626';
-    return '#7f1d1d';
-  }
-
   yieldTonnes(kgPerHa: number): string {
     return (kgPerHa / 1000).toFixed(2);
   }
