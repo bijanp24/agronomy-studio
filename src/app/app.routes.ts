@@ -22,5 +22,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/gis/gis.component').then(m => m.GisComponent),
   },
+  {
+    path: 'query',
+    loadComponent: () =>
+      import('./pages/query/query.component').then(m => m.QueryComponent),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

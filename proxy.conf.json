@@ -10,5 +10,11 @@
     "secure": false,
     "changeOrigin": true,
     "pathRewrite": { "^/weather-api": "" }
+  },
+  "/query-api": {
+    "target": "http://localhost:4304",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/query-api": "" }
   }
 }
