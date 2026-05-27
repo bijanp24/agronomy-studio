@@ -22,7 +22,7 @@
 
 <mat-accordion multi>
   @for (d of details; track d.field.id) {
-    <mat-expansion-panel class="field-panel">
+    <mat-expansion-panel class="field-panel" [expanded]="d.field.id === expandFieldId">
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon class="field-icon">agriculture</mat-icon>

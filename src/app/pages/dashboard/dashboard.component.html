@@ -45,7 +45,8 @@
     @for (f of fields; track f.fieldId) {
       <mat-card class="stress-card stress-{{ f.stressLabel }}"
                 [matTooltip]="'Click to view field details'"
-                [routerLink]="['/fields']">
+                [routerLink]="['/fields']"
+                [queryParams]="{ expand: f.fieldId }">
         <mat-card-content>
           <div class="stress-field-name">{{ f.fieldName }}</div>
           <div class="stress-crop">{{ f.crop }}</div>

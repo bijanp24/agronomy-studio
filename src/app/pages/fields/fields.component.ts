@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -42,10 +43,12 @@ interface FieldDetail {
 })
 export class FieldsComponent implements OnInit {
   private service = inject(FieldIntelligenceService);
+  private route   = inject(ActivatedRoute);
 
   details: FieldDetail[] = [];
   loading = true;
   error = '';
+  expandFieldId = '';
 
   readonly opColumns = ['operationType', 'timestamp', 'notes'];
 
@@ -69,6 +72,10 @@ export class FieldsComponent implements OnInit {
   ];
 
   ngOnInit() {
+    this.route.queryParamMap.subscribe(p => {
+      this.expandFieldId = p.get('expand') ?? '';
+    });
+
     this.service.getFields().subscribe({
       next: res => {
         const fields = res.fields;
