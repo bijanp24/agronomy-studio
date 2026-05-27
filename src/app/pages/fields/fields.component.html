@@ -22,7 +22,7 @@
 
 <mat-accordion multi>
   @for (d of details; track d.field.id) {
-    <mat-expansion-panel class="field-panel">
+    <mat-expansion-panel class="field-panel" [expanded]="d.field.id === expandFieldId">
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon class="field-icon">agriculture</mat-icon>
@@ -113,6 +113,25 @@
             <tr mat-header-row *matHeaderRowDef="opColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: opColumns;"></tr>
           </table>
+        }
+
+        <!-- Soil Tests -->
+        @if (d.soilTests?.length) {
+          <mat-divider class="divider" />
+          <h3 class="sub-title">Soil Tests</h3>
+          <div class="soil-meta">
+            Latest: {{ d.soilTests![0].sampleDate | date:'mediumDate' }} · {{ d.soilTests![0].labName }}
+            @if (d.soilTests![0].notes) { <span class="soil-notes">— {{ d.soilTests![0].notes }}</span> }
+          </div>
+          <div class="soil-grid">
+            @for (m of soilMetrics; track m.key) {
+              <div class="soil-stat">
+                <div class="soil-stat-label">{{ m.label }}</div>
+                <div class="soil-stat-value">{{ d.soilTests![0][m.key] | number:'1.1-2' }}</div>
+                <div class="soil-stat-unit">{{ m.unit }}</div>
+              </div>
+            }
+          </div>
         }
 
       </div>

@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -10,15 +11,18 @@ import { MatTableModule } from '@angular/material/table';
 import { forkJoin } from 'rxjs';
 
 import { FieldIntelligenceService } from '../../services/field-intelligence.service';
-import { Field, NutrientBalance, YieldPrediction, FieldOperation } from '../../models/field-intelligence.models';
+import { Field, NutrientBalance, YieldPrediction, FieldOperation, SoilTest } from '../../models/field-intelligence.models';
 
 type FactorKey = keyof YieldPrediction['factors'];
+type SoilMetricKey = 'soilPh' | 'organicMatterPercent' | 'cationExchangeCapacity'
+                   | 'nitrateNppm' | 'phosphorusPpm' | 'potassiumPpm' | 'electricalConductivity';
 
 interface FieldDetail {
   field: Field;
   nutrients?: NutrientBalance;
   yield?: YieldPrediction;
   operations?: FieldOperation[];
+  soilTests?: SoilTest[];
 }
 
 @Component({
@@ -39,12 +43,24 @@ interface FieldDetail {
 })
 export class FieldsComponent implements OnInit {
   private service = inject(FieldIntelligenceService);
+  private route   = inject(ActivatedRoute);
 
   details: FieldDetail[] = [];
   loading = true;
   error = '';
+  expandFieldId = '';
 
   readonly opColumns = ['operationType', 'timestamp', 'notes'];
+
+  readonly soilMetrics: { key: SoilMetricKey; label: string; unit: string }[] = [
+    { key: 'soilPh',                 label: 'pH',    unit: ''     },
+    { key: 'organicMatterPercent',   label: 'OM',    unit: '%'    },
+    { key: 'cationExchangeCapacity', label: 'CEC',   unit: 'meq' },
+    { key: 'nitrateNppm',            label: 'NO₃-N', unit: 'ppm' },
+    { key: 'phosphorusPpm',          label: 'P',     unit: 'ppm' },
+    { key: 'potassiumPpm',           label: 'K',     unit: 'ppm' },
+    { key: 'electricalConductivity', label: 'EC',    unit: 'dS/m'},
+  ];
 
   readonly yieldFactors: { key: FactorKey; label: string }[] = [
     { key: 'seed',     label: 'Seed'     },
@@ -56,6 +72,10 @@ export class FieldsComponent implements OnInit {
   ];
 
   ngOnInit() {
+    this.route.queryParamMap.subscribe(p => {
+      this.expandFieldId = p.get('expand') ?? '';
+    });
+
     this.service.getFields().subscribe({
       next: res => {
         const fields = res.fields;
@@ -65,16 +85,19 @@ export class FieldsComponent implements OnInit {
 
         fields.forEach((f, i) => {
           forkJoin({
-            nutrients: this.service.getNutrientBalance(f.id),
-            yield: this.service.getYieldPrediction(f.id),
+            nutrients:  this.service.getNutrientBalance(f.id),
+            yield:      this.service.getYieldPrediction(f.id),
             operations: this.service.getOperations(f.id),
+            soilTests:  this.service.getSoilTests(f.id),
           }).subscribe({
             next: d => {
               this.details[i] = {
                 field: f,
-                nutrients: d.nutrients,
-                yield: d.yield,
+                nutrients:  d.nutrients,
+                yield:      d.yield,
                 operations: d.operations.operations,
+                soilTests:  d.soilTests.soilTests
+                              .sort((a, b) => new Date(b.sampleDate).getTime() - new Date(a.sampleDate).getTime()),
               };
             },
           });
