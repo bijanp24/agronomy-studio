@@ -45,10 +45,10 @@
 }
 
 .stress-bar { margin-top: 4px; }
-::ng-deep .stress-bar-low      .mdc-linear-progress__bar-inner { border-color: #16803c !important; }
-::ng-deep .stress-bar-moderate .mdc-linear-progress__bar-inner { border-color: #b45309 !important; }
-::ng-deep .stress-bar-high     .mdc-linear-progress__bar-inner { border-color: #dc2626 !important; }
-::ng-deep .stress-bar-critical .mdc-linear-progress__bar-inner { border-color: #7f1d1d !important; }
+.stress-bar-low      { --mdc-linear-progress-active-indicator-color: #16803c; }
+.stress-bar-moderate { --mdc-linear-progress-active-indicator-color: #b45309; }
+.stress-bar-high     { --mdc-linear-progress-active-indicator-color: #dc2626; }
+.stress-bar-critical { --mdc-linear-progress-active-indicator-color: #7f1d1d; }
 
 .yield-table { width: 100%; }
 

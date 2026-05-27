@@ -32,8 +32,8 @@
   .entropy-loc { font-size: 11px; color: #5b6677; }
 }
 
-::ng-deep .entropy-bar .mdc-linear-progress__bar-inner { border-color: #7c3aed !important; }
-::ng-deep .gauge-bar .mdc-linear-progress__bar-inner { border-color: #16803c !important; }
+.entropy-bar { --mdc-linear-progress-active-indicator-color: #7c3aed; }
+.gauge-bar   { --mdc-linear-progress-active-indicator-color: #16803c; }
 
 .outcomes-grid {
   display: grid;
