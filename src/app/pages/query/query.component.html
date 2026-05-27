@@ -32,6 +32,27 @@
   <main class="query-main">
     <mat-card class="query-input-card">
       <mat-card-content>
+        <div class="provider-selector">
+          <mat-button-toggle-group
+            [value]="provider()"
+            (change)="provider.set($event.value)"
+            aria-label="LLM provider"
+            hideSingleSelectionIndicator>
+            <mat-button-toggle value="mock" matTooltip="Keyword-matched mock responses">
+              <mat-icon>dns</mat-icon>
+              Mock
+            </mat-button-toggle>
+            <mat-button-toggle value="openai" matTooltip="OpenAI GPT-4o-mini">
+              <mat-icon>auto_awesome</mat-icon>
+              OpenAI
+            </mat-button-toggle>
+            <mat-button-toggle value="gemini" matTooltip="Google Gemini 2.0 Flash">
+              <mat-icon>star</mat-icon>
+              Gemini
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
         <form (ngSubmit)="submit()" class="query-form">
           <mat-form-field appearance="outline" class="query-field">
             <mat-label>Ask a question about your field data</mat-label>

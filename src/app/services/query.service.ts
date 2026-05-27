@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { QueryRequest, QueryResponse, CacheStatus } from '../models/query.models';
+import { QueryRequest, QueryResponse, CacheStatus, LlmProvider } from '../models/query.models';
 
 const BASE = '/query-api';
 
@@ -9,8 +9,8 @@ const BASE = '/query-api';
 export class QueryService {
   private http = inject(HttpClient);
 
-  query(question: string): Observable<QueryResponse> {
-    const body: QueryRequest = { question };
+  query(question: string, provider: LlmProvider = 'mock'): Observable<QueryResponse> {
+    const body: QueryRequest = { question, provider };
     return this.http.post<QueryResponse>(`${BASE}/api/query`, body);
   }
 
