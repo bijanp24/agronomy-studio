@@ -40,3 +40,29 @@ All commit messages must follow the Angular Conventional Commits format:
 ### 4. Execution
 
 When a logical chunk of work is complete, automatically stage the relevant files and execute the git commit with the properly formatted message — no need to ask twice.
+
+## Branching Strategy
+
+**Feature branches + PR to master.**
+
+### Rules
+
+- `master` is the protected integration branch. Never push directly to it.
+- All work happens on short-lived branches named after the conventional commit type and scope:
+  ```
+  <type>/<short-description>
+  e.g. fix/gis-filter-reactivity
+       feat/field-detail-modal
+       refactor/shared-scss-tokens
+  ```
+- Branch from the latest `master`. Keep branches focused — one feature or fix per branch.
+- Open a GitHub PR to merge into `master`. The PR title must follow the same conventional commit format as the subject line.
+- Delete the branch after the PR is merged.
+
+### Execution
+
+When starting a new task, create the branch before writing any code:
+```
+git checkout -b <type>/<short-description>
+```
+When the work is committed and ready, push the branch and open a PR — do not push to `master` directly.
