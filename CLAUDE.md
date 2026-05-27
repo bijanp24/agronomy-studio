@@ -1,5 +1,7 @@
 # Agronomy Studio — Claude Instructions
 
+> **See also:** [Angular.md](./Angular.md) for Angular, TypeScript, and accessibility coding standards.
+
 ## Project
 
 Angular 21 standalone-component SPA for California field intelligence.
