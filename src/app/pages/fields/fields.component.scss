@@ -1,3 +1,11 @@
+.empty-card mat-card-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-muted);
+  mat-icon { color: var(--color-muted); }
+}
+
 .field-panel { margin-bottom: 8px; }
 
 .field-icon { margin-right: 8px; color: #16803c; vertical-align: middle; }
