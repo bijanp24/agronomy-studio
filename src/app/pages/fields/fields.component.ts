@@ -12,6 +12,8 @@ import { forkJoin } from 'rxjs';
 import { FieldIntelligenceService } from '../../services/field-intelligence.service';
 import { Field, NutrientBalance, YieldPrediction, FieldOperation } from '../../models/field-intelligence.models';
 
+type FactorKey = keyof YieldPrediction['factors'];
+
 interface FieldDetail {
   field: Field;
   nutrients?: NutrientBalance;
@@ -43,6 +45,15 @@ export class FieldsComponent implements OnInit {
   error = '';
 
   readonly opColumns = ['operationType', 'timestamp', 'notes'];
+
+  readonly yieldFactors: { key: FactorKey; label: string }[] = [
+    { key: 'seed',     label: 'Seed'     },
+    { key: 'planting', label: 'Planting' },
+    { key: 'water',    label: 'Water'    },
+    { key: 'nutrient', label: 'Nutrient' },
+    { key: 'heat',     label: 'Heat'     },
+    { key: 'uv',       label: 'UV'       },
+  ];
 
   ngOnInit() {
     this.service.getFields().subscribe({

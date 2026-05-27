@@ -68,20 +68,13 @@
             <span class="conf-chip conf-{{ d.yield.confidence }}">{{ d.yield.confidence }} confidence</span>
           </div>
           <div class="factors-grid">
-            @for (factor of [
-              { key: 'seed', label: 'Seed' },
-              { key: 'planting', label: 'Planting' },
-              { key: 'water', label: 'Water' },
-              { key: 'nutrient', label: 'Nutrient' },
-              { key: 'heat', label: 'Heat' },
-              { key: 'uv', label: 'UV' }
-            ]; track factor.key) {
+            @for (factor of yieldFactors; track factor.key) {
               <div class="factor-item">
                 <div class="factor-label">{{ factor.label }}</div>
                 <mat-progress-bar mode="determinate"
-                  [value]="factorPct($any(d.yield.factors)[factor.key])"
-                  [class]="factorPct($any(d.yield.factors)[factor.key]) < 70 ? 'factor-bar warn-bar' : 'factor-bar'" />
-                <div class="factor-pct">{{ factorPct($any(d.yield.factors)[factor.key]) }}%</div>
+                  [value]="factorPct(d.yield.factors[factor.key])"
+                  [class]="factorPct(d.yield.factors[factor.key]) < 70 ? 'factor-bar warn-bar' : 'factor-bar'" />
+                <div class="factor-pct">{{ factorPct(d.yield.factors[factor.key]) }}%</div>
               </div>
             }
           </div>
