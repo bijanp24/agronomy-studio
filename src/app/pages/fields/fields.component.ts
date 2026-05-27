@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -49,14 +49,6 @@ export class FieldsComponent implements OnInit {
       next: res => {
         const fields = res.fields;
         if (!fields.length) { this.loading = false; return; }
-
-        const detailCalls = fields.map(f =>
-          forkJoin({
-            nutrients: this.service.getNutrientBalance(f.id),
-            yield: this.service.getYieldPrediction(f.id),
-            operations: this.service.getOperations(f.id),
-          })
-        );
 
         this.details = fields.map(f => ({ field: f }));
 
