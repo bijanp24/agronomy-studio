@@ -11,36 +11,36 @@
       <mat-card-content>
         <mat-form-field appearance="outline" class="postal-field">
           <mat-label>Postal Code</mat-label>
-          <input matInput [(ngModel)]="postalCode" placeholder="93650" />
+          <input matInput [ngModel]="postalCode()" (ngModelChange)="postalCode.set($event)" placeholder="93650" />
         </mat-form-field>
-        <button mat-flat-button color="primary" (click)="fetch()" [disabled]="loading">
+        <button mat-flat-button color="primary" (click)="fetch()" [disabled]="loading()">
           <mat-icon>refresh</mat-icon> Roll
         </button>
         <mat-slide-toggle
           class="auto-toggle"
-          [checked]="autoRefresh"
+          [checked]="autoRefresh()"
           (change)="toggleAuto($event.checked)">
           Auto (5s)
         </mat-slide-toggle>
       </mat-card-content>
     </mat-card>
 
-    @if (hasError) {
+    @if (hasError()) {
       <mat-card class="error-card">
         <mat-card-content><mat-icon color="warn">error_outline</mat-icon> Could not load entropy — check the dev servers.</mat-card-content>
       </mat-card>
     }
 
-    @if (loading) { <mat-progress-bar mode="indeterminate" class="load-bar" /> }
+    @if (loading()) { <mat-progress-bar mode="indeterminate" class="load-bar" /> }
 
-    @if (current) {
+    @if (current(); as c) {
       <!-- Entropy value -->
       <mat-card class="entropy-val-card">
         <mat-card-content>
-          <div class="entropy-number">{{ current.entropy.toFixed(6) }}</div>
+          <div class="entropy-number">{{ c.entropy.toFixed(6) }}</div>
           <div class="entropy-label">entropy ∈ [0, 1)</div>
           <mat-progress-bar mode="determinate" [value]="entropyPct()" class="entropy-bar" />
-          <div class="entropy-loc">{{ current.location }} · {{ current.timestamp | date:'mediumTime' }}</div>
+          <div class="entropy-loc">{{ c.location }} · {{ c.timestamp | date:'mediumTime' }}</div>
         </mat-card-content>
       </mat-card>
 
@@ -85,10 +85,10 @@
               <div class="gauge-label">{{ m.label }}</div>
               <mat-progress-bar
                 mode="determinate"
-                [value]="vectorPct(current.vector[i])"
+                [value]="vectorPct(c.vector[i])"
                 class="gauge-bar" />
               <div class="gauge-val">
-                {{ $any(current.atmospheric)[m.key] }} {{ m.unit }}
+                {{ atmosphericVal(c.atmospheric, m.key) }} {{ m.unit }}
               </div>
             </div>
           }
@@ -102,26 +102,30 @@
     <mat-card class="history-card">
       <mat-card-header><mat-card-title>History</mat-card-title></mat-card-header>
       <mat-card-content>
-        @if (history && history.records.length) {
-          <svg class="sparkline" viewBox="0 0 600 80" preserveAspectRatio="none">
-            <path [attr.d]="sparklinePath(history.records)"
-                  fill="none" stroke="#7c3aed" stroke-width="2" />
-            <path [attr.d]="meanLine(history)"
-                  fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" />
-          </svg>
-          <div class="history-stats">
-            <span>Readings: <strong>{{ history.stats.count }}</strong></span>
-            <span>Mean: <strong>{{ history.stats.meanEntropy.toFixed(4) }}</strong></span>
-            <span>Variance: <strong>{{ history.stats.varianceEntropy.toFixed(4) }}</strong></span>
-          </div>
-          <div class="history-list">
-            @for (r of history.records.slice().reverse().slice(0, 20); track r.timestamp) {
-              <div class="history-row">
-                <span class="h-time">{{ r.timestamp | date:'mediumTime' }}</span>
-                <span class="h-val">{{ r.entropy.toFixed(4) }}</span>
-              </div>
-            }
-          </div>
+        @if (history(); as h) {
+          @if (h.records.length) {
+            <svg class="sparkline" viewBox="0 0 600 80" preserveAspectRatio="none">
+              <path [attr.d]="sparklinePath(h.records)"
+                    fill="none" stroke="#7c3aed" stroke-width="2" />
+              <path [attr.d]="meanLine(h)"
+                    fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" />
+            </svg>
+            <div class="history-stats">
+              <span>Readings: <strong>{{ h.stats.count }}</strong></span>
+              <span>Mean: <strong>{{ h.stats.meanEntropy.toFixed(4) }}</strong></span>
+              <span>Variance: <strong>{{ h.stats.varianceEntropy.toFixed(4) }}</strong></span>
+            </div>
+            <div class="history-list">
+              @for (r of h.records.slice().reverse().slice(0, 20); track r.timestamp) {
+                <div class="history-row">
+                  <span class="h-time">{{ r.timestamp | date:'mediumTime' }}</span>
+                  <span class="h-val">{{ r.entropy.toFixed(4) }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="muted">No history yet — click Roll to generate readings.</p>
+          }
         } @else {
           <p class="muted">No history yet — click Roll to generate readings.</p>
         }

@@ -1,6 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -27,7 +29,7 @@ interface FieldDetail {
 
 @Component({
   selector: 'app-fields',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     MatCardModule,
@@ -45,10 +47,14 @@ export class FieldsComponent implements OnInit {
   private service = inject(FieldIntelligenceService);
   private route   = inject(ActivatedRoute);
 
-  details: FieldDetail[] = [];
-  loading = true;
-  hasError = false;
-  expandFieldId = '';
+  readonly details  = signal<FieldDetail[]>([]);
+  readonly loading  = signal(true);
+  readonly hasError = signal(false);
+
+  readonly expandFieldId = toSignal(
+    this.route.queryParamMap.pipe(map(p => p.get('expand') ?? '')),
+    { initialValue: '' }
+  );
 
   readonly opColumns = ['operationType', 'timestamp', 'notes'];
 
@@ -72,16 +78,12 @@ export class FieldsComponent implements OnInit {
   ];
 
   ngOnInit() {
-    this.route.queryParamMap.subscribe(p => {
-      this.expandFieldId = p.get('expand') ?? '';
-    });
-
     this.service.getFields().subscribe({
       next: res => {
         const fields = res.fields;
-        if (!fields.length) { this.loading = false; return; }
+        if (!fields.length) { this.loading.set(false); return; }
 
-        this.details = fields.map(f => ({ field: f }));
+        this.details.set(fields.map(f => ({ field: f })));
 
         fields.forEach((f, i) => {
           forkJoin({
@@ -91,21 +93,25 @@ export class FieldsComponent implements OnInit {
             soilTests:  this.service.getSoilTests(f.id),
           }).subscribe({
             next: d => {
-              this.details[i] = {
-                field: f,
-                nutrients:  d.nutrients,
-                yield:      d.yield,
-                operations: d.operations.operations,
-                soilTests:  d.soilTests.soilTests
-                              .sort((a, b) => new Date(b.sampleDate).getTime() - new Date(a.sampleDate).getTime()),
-              };
+              this.details.update(arr => {
+                const next = [...arr];
+                next[i] = {
+                  field: f,
+                  nutrients:  d.nutrients,
+                  yield:      d.yield,
+                  operations: d.operations.operations,
+                  soilTests:  d.soilTests.soilTests
+                                .sort((a, b) => new Date(b.sampleDate).getTime() - new Date(a.sampleDate).getTime()),
+                };
+                return next;
+              });
             },
           });
         });
 
-        this.loading = false;
+        this.loading.set(false);
       },
-      error: () => { this.hasError = true; this.loading = false; },
+      error: () => { this.hasError.set(true); this.loading.set(false); },
     });
   }
 

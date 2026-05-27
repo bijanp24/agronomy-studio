@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 
 import { WeatherService } from '../../services/weather.service';
-import { EntropyReading, EntropyHistory } from '../../models/weather.models';
+import { AtmosphericSnapshot, EntropyReading, EntropyHistory } from '../../models/weather.models';
 
 const FIELD_META = [
   { key: 'precip1Hour',       label: 'Precip 1hr',  unit: 'in',   max: 2.0  },
@@ -20,9 +20,11 @@ const FIELD_META = [
   { key: 'temperature',       label: 'Temperature', unit: '°F',   max: 120, min: -20 },
 ] as const;
 
+type FieldMetaKey = (typeof FIELD_META)[number]['key'];
+
 @Component({
   selector: 'app-entropy',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -40,14 +42,49 @@ const FIELD_META = [
 export class EntropyComponent implements OnInit, OnDestroy {
   private service = inject(WeatherService);
 
-  readonly fieldMeta = FIELD_META;
+  readonly fieldMeta: ReadonlyArray<{
+    key: FieldMetaKey;
+    label: string;
+    unit: string;
+    max: number;
+    min?: number;
+  }> = FIELD_META;
 
-  current: EntropyReading | null = null;
-  history: EntropyHistory | null = null;
-  loading = false;
-  hasError = false;
-  autoRefresh = false;
-  postalCode = '93650';
+  readonly current    = signal<EntropyReading | null>(null);
+  readonly history    = signal<EntropyHistory | null>(null);
+  readonly loading    = signal(false);
+  readonly hasError   = signal(false);
+  readonly autoRefresh = signal(false);
+  readonly postalCode = signal('93650');
+
+  readonly entropyPct = computed(() => {
+    const c = this.current();
+    return c ? Math.round(c.entropy * 100) : 0;
+  });
+
+  readonly coinFlip = computed(() => {
+    const c = this.current();
+    if (!c) return '—';
+    return c.entropy >= 0.5 ? 'Heads' : 'Tails';
+  });
+
+  readonly d6 = computed(() => {
+    const c = this.current();
+    if (!c) return '—';
+    return Math.floor(c.entropy * 6) + 1;
+  });
+
+  readonly d20 = computed(() => {
+    const c = this.current();
+    if (!c) return '—';
+    return Math.floor(c.entropy * 20) + 1;
+  });
+
+  readonly percent = computed(() => {
+    const c = this.current();
+    if (!c) return '—';
+    return (c.entropy * 100).toFixed(1) + '%';
+  });
 
   private timer: ReturnType<typeof setInterval> | null = null;
 
@@ -60,22 +97,22 @@ export class EntropyComponent implements OnInit, OnDestroy {
   }
 
   fetch() {
-    this.loading = true;
-    this.hasError = false;
-    this.service.getEntropyCurrent(this.postalCode).subscribe({
-      next: r => { this.current = r; this.loading = false; this.loadHistory(); },
-      error: () => { this.hasError = true; this.loading = false; },
+    this.loading.set(true);
+    this.hasError.set(false);
+    this.service.getEntropyCurrent(this.postalCode()).subscribe({
+      next: r => { this.current.set(r); this.loading.set(false); this.loadHistory(); },
+      error: () => { this.hasError.set(true); this.loading.set(false); },
     });
   }
 
   loadHistory() {
     this.service.getEntropyHistory().subscribe({
-      next: h => { this.history = h; },
+      next: h => { this.history.set(h); },
     });
   }
 
   toggleAuto(on: boolean) {
-    this.autoRefresh = on;
+    this.autoRefresh.set(on);
     if (on) {
       this.timer = setInterval(() => this.fetch(), 5000);
     } else {
@@ -91,28 +128,8 @@ export class EntropyComponent implements OnInit, OnDestroy {
     return Math.round(v * 100);
   }
 
-  entropyPct(): number {
-    return this.current ? Math.round(this.current.entropy * 100) : 0;
-  }
-
-  coinFlip(): string {
-    if (!this.current) return '—';
-    return this.current.entropy >= 0.5 ? 'Heads' : 'Tails';
-  }
-
-  d6(): number | string {
-    if (!this.current) return '—';
-    return Math.floor(this.current.entropy * 6) + 1;
-  }
-
-  d20(): number | string {
-    if (!this.current) return '—';
-    return Math.floor(this.current.entropy * 20) + 1;
-  }
-
-  percent(): string {
-    if (!this.current) return '—';
-    return (this.current.entropy * 100).toFixed(1) + '%';
+  atmosphericVal(atmospheric: AtmosphericSnapshot, key: FieldMetaKey): number | string {
+    return atmospheric[key];
   }
 
   sparklinePath(records: EntropyReading[]): string {
