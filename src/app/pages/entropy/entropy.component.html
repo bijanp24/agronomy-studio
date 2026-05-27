@@ -1,0 +1,131 @@
+<div class="page-header">
+  <h1>Atmospheric Entropy</h1>
+  <p class="page-sub">Live weather readings as a true entropy source — no Math.random()</p>
+</div>
+
+<div class="entropy-layout">
+  <!-- Left: controls + reading -->
+  <div class="entropy-left">
+
+    <mat-card class="controls-card">
+      <mat-card-content>
+        <mat-form-field appearance="outline" class="postal-field">
+          <mat-label>Postal Code</mat-label>
+          <input matInput [(ngModel)]="postalCode" placeholder="93650" />
+        </mat-form-field>
+        <button mat-flat-button color="primary" (click)="fetch()" [disabled]="loading">
+          <mat-icon>refresh</mat-icon> Roll
+        </button>
+        <mat-slide-toggle
+          class="auto-toggle"
+          [checked]="autoRefresh"
+          (change)="toggleAuto($event.checked)">
+          Auto (5s)
+        </mat-slide-toggle>
+      </mat-card-content>
+    </mat-card>
+
+    @if (error) {
+      <mat-card class="error-card">
+        <mat-card-content><mat-icon color="warn">error_outline</mat-icon> {{ error }}</mat-card-content>
+      </mat-card>
+    }
+
+    @if (loading) { <mat-progress-bar mode="indeterminate" class="load-bar" /> }
+
+    @if (current) {
+      <!-- Entropy value -->
+      <mat-card class="entropy-val-card">
+        <mat-card-content>
+          <div class="entropy-number">{{ current.entropy.toFixed(6) }}</div>
+          <div class="entropy-label">entropy ∈ [0, 1)</div>
+          <mat-progress-bar mode="determinate" [value]="entropyPct()" class="entropy-bar" />
+          <div class="entropy-loc">{{ current.location }} · {{ current.timestamp | date:'mediumTime' }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Derived outcomes -->
+      <div class="outcomes-grid">
+        <mat-card class="outcome-card">
+          <mat-card-content>
+            <mat-icon>toll</mat-icon>
+            <div class="outcome-val">{{ coinFlip() }}</div>
+            <div class="outcome-label">Coin Flip</div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card class="outcome-card">
+          <mat-card-content>
+            <mat-icon>casino</mat-icon>
+            <div class="outcome-val">{{ d6() }}</div>
+            <div class="outcome-label">d6</div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card class="outcome-card">
+          <mat-card-content>
+            <mat-icon>sports_esports</mat-icon>
+            <div class="outcome-val">{{ d20() }}</div>
+            <div class="outcome-label">d20</div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card class="outcome-card">
+          <mat-card-content>
+            <mat-icon>percent</mat-icon>
+            <div class="outcome-val">{{ percent() }}</div>
+            <div class="outcome-label">Percentile</div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Atmospheric gauges -->
+      <mat-card>
+        <mat-card-header><mat-card-title>Atmospheric Inputs</mat-card-title></mat-card-header>
+        <mat-card-content>
+          @for (m of fieldMeta; track m.key; let i = $index) {
+            <div class="gauge-row">
+              <div class="gauge-label">{{ m.label }}</div>
+              <mat-progress-bar
+                mode="determinate"
+                [value]="vectorPct(current.vector[i])"
+                class="gauge-bar" />
+              <div class="gauge-val">
+                {{ $any(current.atmospheric)[m.key] }} {{ m.unit }}
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+
+  <!-- Right: history -->
+  <div class="entropy-right">
+    <mat-card class="history-card">
+      <mat-card-header><mat-card-title>History</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (history && history.records.length) {
+          <svg class="sparkline" viewBox="0 0 600 80" preserveAspectRatio="none">
+            <path [attr.d]="sparklinePath(history.records)"
+                  fill="none" stroke="#7c3aed" stroke-width="2" />
+            <path [attr.d]="meanLine(history)"
+                  fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" />
+          </svg>
+          <div class="history-stats">
+            <span>Readings: <strong>{{ history.stats.count }}</strong></span>
+            <span>Mean: <strong>{{ history.stats.meanEntropy.toFixed(4) }}</strong></span>
+            <span>Variance: <strong>{{ history.stats.varianceEntropy.toFixed(4) }}</strong></span>
+          </div>
+          <div class="history-list">
+            @for (r of history.records.slice().reverse().slice(0, 20); track r.timestamp) {
+              <div class="history-row">
+                <span class="h-time">{{ r.timestamp | date:'mediumTime' }}</span>
+                <span class="h-val">{{ r.entropy.toFixed(4) }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="muted">No history yet — click Roll to generate readings.</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
