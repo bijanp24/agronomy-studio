@@ -1,0 +1,41 @@
+<mat-sidenav-container class="app-container">
+
+  <mat-sidenav mode="side" opened class="app-sidenav">
+    <div class="sidenav-header">
+      <mat-icon class="brand-icon">eco</mat-icon>
+      <div>
+        <div class="brand-title">{{ title }}</div>
+        <div class="brand-sub">{{ subtitle }}</div>
+      </div>
+    </div>
+
+    <mat-nav-list>
+      @for (item of navItems; track item.route) {
+        <a mat-list-item
+           [routerLink]="item.route"
+           routerLinkActive="nav-active"
+           [routerLinkActiveOptions]="{ exact: false }">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+
+    <div class="sidenav-footer">
+      <span class="port-badge">Field :4302</span>
+      <span class="port-badge">Weather :4300</span>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="app-content">
+    <mat-toolbar class="app-toolbar" color="primary">
+      <span class="toolbar-spacer"></span>
+      <span class="region-chip">US-CA · San Joaquin Valley</span>
+    </mat-toolbar>
+
+    <div class="page-wrap">
+      <router-outlet />
+    </div>
+  </mat-sidenav-content>
+
+</mat-sidenav-container>
