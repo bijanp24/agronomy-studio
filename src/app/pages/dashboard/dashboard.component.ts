@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -14,7 +14,7 @@ import { FieldSummary } from '../../models/field-intelligence.models';
 
 @Component({
   selector: 'app-dashboard',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     RouterLink,
@@ -32,30 +32,31 @@ import { FieldSummary } from '../../models/field-intelligence.models';
 export class DashboardComponent implements OnInit {
   private service = inject(FieldIntelligenceService);
 
-  fields: FieldSummary[] = [];
-  loading = true;
-  hasError = false;
+  readonly fields   = signal<FieldSummary[]>([]);
+  readonly loading  = signal(true);
+  readonly hasError = signal(false);
 
   readonly displayedColumns = ['fieldName', 'crop', 'stress', 'yield', 'confidence'];
 
+  readonly criticalCount = computed(() =>
+    this.fields().filter(f => f.stressLabel === 'critical' || f.stressLabel === 'high').length
+  );
+
+  readonly avgYield = computed(() => {
+    const fs = this.fields();
+    if (!fs.length) return '—';
+    const avg = fs.reduce((s, f) => s + f.predictedYieldKgPerHa, 0) / fs.length;
+    return (avg / 1000).toFixed(2);
+  });
+
   ngOnInit() {
     this.service.getDashboardSummary().subscribe({
-      next: res => { this.fields = res.fields; this.loading = false; },
-      error: () => { this.hasError = true; this.loading = false; },
+      next: res => { this.fields.set(res.fields); this.loading.set(false); },
+      error: () => { this.hasError.set(true); this.loading.set(false); },
     });
   }
 
   yieldTonnes(kgPerHa: number): string {
     return (kgPerHa / 1000).toFixed(2);
-  }
-
-  criticalCount(): number {
-    return this.fields.filter(f => f.stressLabel === 'critical' || f.stressLabel === 'high').length;
-  }
-
-  avgYield(): string {
-    if (!this.fields.length) return '—';
-    const avg = this.fields.reduce((s, f) => s + f.predictedYieldKgPerHa, 0) / this.fields.length;
-    return (avg / 1000).toFixed(2);
   }
 }

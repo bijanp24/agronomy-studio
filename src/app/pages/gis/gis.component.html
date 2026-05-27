@@ -3,14 +3,14 @@
   <p class="page-sub">San Joaquin Valley — {{ features().length }} blocks at 2 km resolution</p>
 </div>
 
-@if (loading) { <mat-progress-bar mode="indeterminate" /> }
-@if (hasError) {
+@if (loading()) { <mat-progress-bar mode="indeterminate" /> }
+@if (hasError()) {
   <mat-card class="error-card">
     <mat-card-content><mat-icon color="warn">error_outline</mat-icon> Could not load GIS blocks — check the dev servers.</mat-card-content>
   </mat-card>
 }
 
-@if (!loading && !hasError) {
+@if (!loading() && !hasError()) {
   <!-- Filter bar -->
   <mat-card class="filter-card">
     <mat-card-content>
@@ -35,8 +35,8 @@
       </mat-form-field>
 
       <span class="result-count">
-        Showing {{ filtered().length }} of {{ filteredCount }}
-        @if (filteredCount > 150) { <span class="cap-note">(capped at 150)</span> }
+        Showing {{ filtered().length }} of {{ filteredCount() }}
+        @if (filteredCount() > 150) { <span class="cap-note">(capped at 150)</span> }
       </span>
     </mat-card-content>
   </mat-card>

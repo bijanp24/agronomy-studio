@@ -1,5 +1,5 @@
 import {
-  Component, OnInit, OnDestroy, AfterViewInit,
+  Component, ChangeDetectionStrategy, OnInit, OnDestroy, AfterViewInit,
   inject, signal, computed, effect, ElementRef, ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -29,7 +29,7 @@ function cropColor(crop: string): string {
 
 @Component({
   selector: 'app-gis',
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -50,15 +50,15 @@ export class GisComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private service = inject(FieldIntelligenceService);
 
-  features = signal<GeoJsonFeature[]>([]);
-  loading = true;
-  hasError = false;
+  readonly features  = signal<GeoJsonFeature[]>([]);
+  readonly loading   = signal(true);
+  readonly hasError  = signal(false);
 
   readonly selectedZone = signal('');
   readonly selectedCrop = signal('');
 
-  zones = signal<string[]>([]);
-  crops  = signal<string[]>([]);
+  readonly zones = signal<string[]>([]);
+  readonly crops  = signal<string[]>([]);
 
   readonly displayedColumns = ['blockId', 'cropType', 'soilType', 'irrigationZone', 'elevationM', 'center'];
 
@@ -70,6 +70,8 @@ export class GisComponent implements OnInit, AfterViewInit, OnDestroy {
   );
 
   readonly filtered = computed(() => this.filteredAll().slice(0, 150));
+
+  readonly filteredCount = computed(() => this.filteredAll().length);
 
   private map?: L.Map;
   private layerGroup = L.layerGroup();
@@ -87,9 +89,9 @@ export class GisComponent implements OnInit, AfterViewInit, OnDestroy {
         this.features.set(fc.features);
         this.zones.set([...new Set(fc.features.map(f => f.properties.irrigationZone))].sort());
         this.crops.set([...new Set(fc.features.map(f => f.properties.cropType))].sort());
-        this.loading = false;
+        this.loading.set(false);
       },
-      error: () => { this.hasError = true; this.loading = false; },
+      error: () => { this.hasError.set(true); this.loading.set(false); },
     });
   }
 
@@ -107,10 +109,6 @@ export class GisComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.map?.remove();
-  }
-
-  get filteredCount(): number {
-    return this.filteredAll().length;
   }
 
   private renderLayers(features: GeoJsonFeature[]) {

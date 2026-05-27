@@ -3,15 +3,15 @@
   <p class="page-sub">Nutrient ledger, yield prediction, and operation history per field</p>
 </div>
 
-@if (loading) { <mat-progress-bar mode="indeterminate" /> }
+@if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
-@if (hasError) {
+@if (hasError()) {
   <mat-card class="error-card">
     <mat-card-content><mat-icon color="warn">error_outline</mat-icon> Could not load fields — check the dev servers.</mat-card-content>
   </mat-card>
 }
 
-@if (!loading && !hasError && !details.length) {
+@if (!loading() && !hasError() && !details().length) {
   <mat-card class="empty-card">
     <mat-card-content>
       <mat-icon>grass</mat-icon>
@@ -21,8 +21,8 @@
 }
 
 <mat-accordion multi>
-  @for (d of details; track d.field.id) {
-    <mat-expansion-panel class="field-panel" [expanded]="d.field.id === expandFieldId">
+  @for (d of details(); track d.field.id) {
+    <mat-expansion-panel class="field-panel" [expanded]="d.field.id === expandFieldId()">
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon class="field-icon">agriculture</mat-icon>
