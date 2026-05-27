@@ -45,7 +45,7 @@ export class EntropyComponent implements OnInit, OnDestroy {
   current: EntropyReading | null = null;
   history: EntropyHistory | null = null;
   loading = false;
-  error = '';
+  hasError = false;
   autoRefresh = false;
   postalCode = '93650';
 
@@ -61,9 +61,10 @@ export class EntropyComponent implements OnInit, OnDestroy {
 
   fetch() {
     this.loading = true;
+    this.hasError = false;
     this.service.getEntropyCurrent(this.postalCode).subscribe({
       next: r => { this.current = r; this.loading = false; this.loadHistory(); },
-      error: () => { this.error = 'Could not reach weather-intelligence-app on :4300'; this.loading = false; },
+      error: () => { this.hasError = true; this.loading = false; },
     });
   }
 

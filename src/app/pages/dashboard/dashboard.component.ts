@@ -34,14 +34,14 @@ export class DashboardComponent implements OnInit {
 
   fields: FieldSummary[] = [];
   loading = true;
-  error = '';
+  hasError = false;
 
   readonly displayedColumns = ['fieldName', 'crop', 'stress', 'yield', 'confidence'];
 
   ngOnInit() {
     this.service.getDashboardSummary().subscribe({
       next: res => { this.fields = res.fields; this.loading = false; },
-      error: () => { this.error = 'Could not load dashboard. Is the field-intelligence server running on :4302?'; this.loading = false; },
+      error: () => { this.hasError = true; this.loading = false; },
     });
   }
 

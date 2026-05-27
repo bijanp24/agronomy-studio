@@ -64,3 +64,6 @@ mat-card { border-radius: 10px !important; }
 
 /* Generic utility */
 .capitalize { text-transform: capitalize; }
+
+/* Error snackbar */
+.error-snack { --mdc-snackbar-container-color: #7f1d1d; --mdc-snackbar-supporting-text-color: #fff; }

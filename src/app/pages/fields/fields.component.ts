@@ -47,7 +47,7 @@ export class FieldsComponent implements OnInit {
 
   details: FieldDetail[] = [];
   loading = true;
-  error = '';
+  hasError = false;
   expandFieldId = '';
 
   readonly opColumns = ['operationType', 'timestamp', 'notes'];
@@ -105,7 +105,7 @@ export class FieldsComponent implements OnInit {
 
         this.loading = false;
       },
-      error: () => { this.error = 'Could not load fields from :4302'; this.loading = false; },
+      error: () => { this.hasError = true; this.loading = false; },
     });
   }
 

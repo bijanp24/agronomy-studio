@@ -36,7 +36,7 @@ export class GisComponent implements OnInit {
 
   features = signal<GeoJsonFeature[]>([]);
   loading = true;
-  error = '';
+  hasError = false;
 
   readonly selectedZone = signal('');
   readonly selectedCrop = signal('');
@@ -63,7 +63,7 @@ export class GisComponent implements OnInit {
         this.crops.set([...new Set(fc.features.map(f => f.properties.cropType))].sort());
         this.loading = false;
       },
-      error: () => { this.error = 'Could not load GIS blocks from :4302'; this.loading = false; },
+      error: () => { this.hasError = true; this.loading = false; },
     });
   }
 
