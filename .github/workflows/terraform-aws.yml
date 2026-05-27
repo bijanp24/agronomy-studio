@@ -1,0 +1,78 @@
+name: Terraform AWS
+
+on:
+  pull_request:
+    paths:
+      - infra/aws/**
+      - .github/workflows/terraform-aws.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - production
+      action:
+        description: Terraform action
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: terraform-aws-${{ inputs.environment || 'pr' }}
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: infra/aws
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION || 'us-west-2' }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform format check
+        run: terraform fmt -check
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: >
+          terraform plan
+          -var-file="env/${{ inputs.environment || 'dev' }}.tfvars"
+          -out=tfplan
+
+      - name: Terraform apply
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'apply' }}
+        run: terraform apply -auto-approve tfplan

@@ -55,6 +55,12 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "test": {
+              "optimization": true,
+              "extractLicenses": true,
+              "sourceMap": true,
+              "outputHashing": "all"
             }
           },
           "defaultConfiguration": "production"

@@ -6,8 +6,12 @@
     "start": "ng serve",
     "start:apis": "node tools/mock-apis.mjs",
     "build": "ng build",
+    "build:dev": "ng build --configuration development",
+    "build:test": "ng build --configuration test",
+    "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:ci": "ng test --watch=false"
   },
   "prettier": {
     "printWidth": 100,

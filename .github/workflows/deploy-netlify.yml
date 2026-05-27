@@ -1,0 +1,95 @@
+name: Deploy Netlify
+
+on:
+  push:
+    branches:
+      - dev
+      - test
+      - master
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: netlify-${{ github.ref_name }}-${{ inputs.environment || 'branch' }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || (github.ref_name == 'master' && 'production') || github.ref_name }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Select deploy settings
+        id: deploy
+        shell: bash
+        run: |
+          target="${{ inputs.environment }}"
+          if [ -z "$target" ]; then
+            case "${{ github.ref_name }}" in
+              dev) target="dev" ;;
+              test) target="test" ;;
+              master) target="production" ;;
+              *) echo "Unsupported deploy branch: ${{ github.ref_name }}" >&2; exit 1 ;;
+            esac
+          fi
+
+          case "$target" in
+            dev)
+              echo "build_script=build:dev" >> "$GITHUB_OUTPUT"
+              echo "netlify_args=--alias=dev" >> "$GITHUB_OUTPUT"
+              ;;
+            test)
+              echo "build_script=build:test" >> "$GITHUB_OUTPUT"
+              echo "netlify_args=--alias=test" >> "$GITHUB_OUTPUT"
+              ;;
+            production)
+              echo "build_script=build:prod" >> "$GITHUB_OUTPUT"
+              echo "netlify_args=--prod" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported deploy environment: $target" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Build
+        run: npm run ${{ steps.deploy.outputs.build_script }}
+
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: >
+          npx netlify-cli@latest deploy
+          --dir=dist/agronomy-dashboard/browser
+          --site="$NETLIFY_SITE_ID"
+          --auth="$NETLIFY_AUTH_TOKEN"
+          ${{ steps.deploy.outputs.netlify_args }}
