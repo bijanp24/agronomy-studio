@@ -1,13 +1,3 @@
-.page-header {
-  margin-bottom: 24px;
-  h1 { margin: 0; font-size: 24px; font-weight: 700; color: #1b3a2d; }
-  .page-sub { margin: 4px 0 0; color: #5b6677; font-size: 14px; }
-}
-
-.error-card {
-  mat-card-content { display: flex; align-items: center; gap: 10px; color: #b42318; }
-}
-
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -77,13 +67,3 @@
   &.stress-critical { background: #f87171; color: #450a0a; }
 }
 
-.conf-chip {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 700;
-  &.conf-high   { background: #dcfce7; color: #14532d; }
-  &.conf-medium { background: #fef3c7; color: #78350f; }
-  &.conf-low    { background: #fee2e2; color: #7f1d1d; }
-}
