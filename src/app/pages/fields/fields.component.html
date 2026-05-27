@@ -1,0 +1,119 @@
+<div class="page-header">
+  <h1>Fields</h1>
+  <p class="page-sub">Nutrient ledger, yield prediction, and operation history per field</p>
+</div>
+
+@if (loading) { <mat-progress-bar mode="indeterminate" /> }
+
+@if (error) {
+  <mat-card class="error-card">
+    <mat-card-content><mat-icon color="warn">error_outline</mat-icon> {{ error }}</mat-card-content>
+  </mat-card>
+}
+
+<mat-accordion multi>
+  @for (d of details; track d.field.id) {
+    <mat-expansion-panel class="field-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon class="field-icon">agriculture</mat-icon>
+          {{ d.field.name }}
+        </mat-panel-title>
+        <mat-panel-description>
+          {{ d.field.soilType }} · {{ d.field.areaHectares }} ha · {{ d.field.regionCode }}
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <div class="panel-body">
+
+        <!-- Nutrient Balance -->
+        @if (d.nutrients) {
+          <h3 class="sub-title">N / P / K Balance</h3>
+          <div class="npk-row">
+            @for (n of [
+              { label: 'N', entry: d.nutrients.n },
+              { label: 'P', entry: d.nutrients.p },
+              { label: 'K', entry: d.nutrients.k }
+            ]; track n.label) {
+              <mat-card class="npk-card npk-{{ balanceClass(n.entry.balance) }}">
+                <mat-card-content>
+                  <div class="npk-label">{{ n.label }}</div>
+                  <div class="npk-balance">{{ n.entry.balance | number:'1.0-0' }} kg/ha</div>
+                  <div class="npk-detail">
+                    Soil {{ n.entry.soil | number:'1.0-0' }} · App {{ n.entry.applied | number:'1.0-0' }} · Uptake {{ n.entry.uptake | number:'1.0-0' }}
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
+          @if (d.nutrients.warnings.length) {
+            <div class="warnings">
+              @for (w of d.nutrients.warnings; track w.nutrient) {
+                <div class="warning-row">
+                  <mat-icon color="warn" class="warn-icon">warning</mat-icon>
+                  {{ w.message }}
+                </div>
+              }
+            </div>
+          }
+        }
+
+        <mat-divider class="divider" />
+
+        <!-- Yield Prediction -->
+        @if (d.yield) {
+          <h3 class="sub-title">Yield Prediction</h3>
+          <div class="yield-summary">
+            <span class="yield-val">{{ yieldTonnes(d.yield.predictedYieldKgPerHa) }} t/ha</span>
+            <span class="conf-chip conf-{{ d.yield.confidence }}">{{ d.yield.confidence }} confidence</span>
+          </div>
+          <div class="factors-grid">
+            @for (factor of [
+              { key: 'seed', label: 'Seed' },
+              { key: 'planting', label: 'Planting' },
+              { key: 'water', label: 'Water' },
+              { key: 'nutrient', label: 'Nutrient' },
+              { key: 'heat', label: 'Heat' },
+              { key: 'uv', label: 'UV' }
+            ]; track factor.key) {
+              <div class="factor-item">
+                <div class="factor-label">{{ factor.label }}</div>
+                <mat-progress-bar mode="determinate"
+                  [value]="factorPct($any(d.yield.factors)[factor.key])"
+                  [class]="factorPct($any(d.yield.factors)[factor.key]) < 70 ? 'factor-bar warn-bar' : 'factor-bar'" />
+                <div class="factor-pct">{{ factorPct($any(d.yield.factors)[factor.key]) }}%</div>
+              </div>
+            }
+          </div>
+          @if (d.yield.limitingFactors.length) {
+            <p class="limiting">Limiting: {{ d.yield.limitingFactors.join(', ') }}</p>
+          }
+        }
+
+        <mat-divider class="divider" />
+
+        <!-- Operations -->
+        @if (d.operations?.length) {
+          <h3 class="sub-title">Recent Operations</h3>
+          <table mat-table [dataSource]="d.operations!" class="ops-table">
+            <ng-container matColumnDef="operationType">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let op" class="capitalize">{{ op.operationType }}</td>
+            </ng-container>
+            <ng-container matColumnDef="timestamp">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let op">{{ op.timestamp | date:'mediumDate' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="notes">
+              <th mat-header-cell *matHeaderCellDef>Notes</th>
+              <td mat-cell *matCellDef="let op">{{ op.notes || '—' }}</td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="opColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: opColumns;"></tr>
+          </table>
+        }
+
+      </div>
+    </mat-expansion-panel>
+  }
+</mat-accordion>

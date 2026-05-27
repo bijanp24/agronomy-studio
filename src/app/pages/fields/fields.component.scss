@@ -1,0 +1,87 @@
+.page-header {
+  margin-bottom: 24px;
+  h1 { margin: 0; font-size: 24px; font-weight: 700; color: #1b3a2d; }
+  .page-sub { margin: 4px 0 0; color: #5b6677; font-size: 14px; }
+}
+
+.error-card mat-card-content { display: flex; align-items: center; gap: 10px; color: #b42318; }
+
+.field-panel { margin-bottom: 8px; }
+
+.field-icon { margin-right: 8px; color: #16803c; vertical-align: middle; }
+
+.panel-body { padding: 8px 0; }
+
+.sub-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1b3a2d;
+  margin: 16px 0 10px;
+}
+
+.npk-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.npk-card {
+  text-align: center;
+  mat-card-content { padding: 12px !important; }
+  .npk-label   { font-size: 18px; font-weight: 900; }
+  .npk-balance { font-size: 20px; font-weight: 700; margin: 4px 0; }
+  .npk-detail  { font-size: 10px; color: #5b6677; }
+  &.npk-ok     { background: #dcfce7; .npk-label { color: #14532d; } }
+  &.npk-warn   { background: #fef3c7; .npk-label { color: #78350f; } }
+  &.npk-danger { background: #fee2e2; .npk-label { color: #7f1d1d; } }
+}
+
+.warnings { margin-bottom: 8px; }
+.warning-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #b45309;
+  margin-bottom: 4px;
+  .warn-icon { font-size: 16px; width: 16px; height: 16px; }
+}
+
+.divider { margin: 16px 0; }
+
+.yield-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  .yield-val { font-size: 28px; font-weight: 900; color: #1b3a2d; }
+}
+
+.conf-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  &.conf-high   { background: #dcfce7; color: #14532d; }
+  &.conf-medium { background: #fef3c7; color: #78350f; }
+  &.conf-low    { background: #fee2e2; color: #7f1d1d; }
+}
+
+.factors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.factor-item {
+  .factor-label { font-size: 11px; color: #5b6677; margin-bottom: 4px; }
+  .factor-pct   { font-size: 11px; color: #1b3a2d; font-weight: 700; margin-top: 2px; }
+}
+
+.limiting { font-size: 12px; color: #b45309; margin: 4px 0 0; }
+
+.ops-table { width: 100%; font-size: 13px; }
+.capitalize { text-transform: capitalize; }
