@@ -45,10 +45,6 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  stressColor(label: string): string {
-    return { low: 'primary', moderate: 'accent', high: 'warn', critical: 'warn' }[label] ?? 'primary';
-  }
-
   stressBarColor(score: number): string {
     if (score < 25) return '#16803c';
     if (score < 50) return '#b45309';
