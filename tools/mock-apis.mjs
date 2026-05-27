@@ -284,5 +284,146 @@ function listen(server, port, name) {
   });
 }
 
+function createQueryApi() {
+  const schemaContext = `Tables: fields (id, name, regionCode, areaHectares, soilType, crop, stressScore, stressLabel, predictedYieldKgPerHa, confidence, topLimitingFactor), soil_tests (id, fieldId, sampleDate, soilPh, organicMatterPercent, cationExchangeCapacity, nitrateNppm, phosphorusPpm, potassiumPpm, electricalConductivity, labName), operations (id, fieldId, operationType, timestamp, notes), entropy_readings (timestamp, entropy, temperature, relativeHumidity, windSpeed, uvIndex, location)`;
+
+  const cannedResponses = {
+    stress: {
+      summary: 'Found 1 field with high stress. Fresno North 12 has a stress score of 72 (high), primarily limited by water availability.',
+      sql: "SELECT name, stressScore, stressLabel, topLimitingFactor FROM fields WHERE stressLabel IN ('high', 'critical') ORDER BY stressScore DESC;",
+      columns: [
+        { name: 'name', type: 'string' },
+        { name: 'stressScore', type: 'number' },
+        { name: 'stressLabel', type: 'string' },
+        { name: 'topLimitingFactor', type: 'string' },
+      ],
+      rows: [
+        { name: 'Fresno North 12', stressScore: 72, stressLabel: 'high', topLimitingFactor: 'water' },
+      ],
+    },
+    yield: {
+      summary: 'Madera West 7 (tomato) has the highest predicted yield at 86,500 kg/ha. Fresno North 12 (almond) predicts 4,120 kg/ha and Kings East 4 (pistachio) predicts 2,980 kg/ha.',
+      sql: 'SELECT name, crop, predictedYieldKgPerHa, confidence FROM fields ORDER BY predictedYieldKgPerHa DESC;',
+      columns: [
+        { name: 'name', type: 'string' },
+        { name: 'crop', type: 'string' },
+        { name: 'predictedYieldKgPerHa', type: 'number' },
+        { name: 'confidence', type: 'string' },
+      ],
+      rows: [
+        { name: 'Madera West 7', crop: 'tomato', predictedYieldKgPerHa: 86500, confidence: 'medium' },
+        { name: 'Fresno North 12', crop: 'almond', predictedYieldKgPerHa: 4120, confidence: 'high' },
+        { name: 'Kings East 4', crop: 'pistachio', predictedYieldKgPerHa: 2980, confidence: 'high' },
+      ],
+    },
+    soil: {
+      summary: 'All fields have soil pH between 6.5–7.0 with organic matter around 1.9%. Potassium levels are adequate (186 ppm) while nitrate-N is moderate (18 ppm).',
+      sql: 'SELECT f.name, s.soilPh, s.organicMatterPercent, s.nitrateNppm, s.phosphorusPpm, s.potassiumPpm FROM soil_tests s JOIN fields f ON s.fieldId = f.id ORDER BY s.sampleDate DESC;',
+      columns: [
+        { name: 'name', type: 'string' },
+        { name: 'soilPh', type: 'number' },
+        { name: 'organicMatterPercent', type: 'number' },
+        { name: 'nitrateNppm', type: 'number' },
+        { name: 'phosphorusPpm', type: 'number' },
+        { name: 'potassiumPpm', type: 'number' },
+      ],
+      rows: [
+        { name: 'Fresno North 12', soilPh: 6.8, organicMatterPercent: 1.9, nitrateNppm: 18, phosphorusPpm: 24, potassiumPpm: 186 },
+        { name: 'Madera West 7', soilPh: 6.9, organicMatterPercent: 2.1, nitrateNppm: 22, phosphorusPpm: 28, potassiumPpm: 195 },
+        { name: 'Kings East 4', soilPh: 6.5, organicMatterPercent: 1.6, nitrateNppm: 14, phosphorusPpm: 19, potassiumPpm: 172 },
+      ],
+    },
+    default: {
+      summary: 'There are 3 active fields in the San Joaquin Valley region: Fresno North 12 (almond, 48.6 ha), Madera West 7 (tomato, 36.2 ha), and Kings East 4 (pistachio, 61.8 ha).',
+      sql: 'SELECT name, crop, areaHectares, regionCode, soilType FROM fields ORDER BY name;',
+      columns: [
+        { name: 'name', type: 'string' },
+        { name: 'crop', type: 'string' },
+        { name: 'areaHectares', type: 'number' },
+        { name: 'regionCode', type: 'string' },
+        { name: 'soilType', type: 'string' },
+      ],
+      rows: [
+        { name: 'Fresno North 12', crop: 'almond', areaHectares: 48.6, regionCode: 'CA-SJV', soilType: 'Hanford sandy loam' },
+        { name: 'Kings East 4', crop: 'pistachio', areaHectares: 61.8, regionCode: 'CA-SJV', soilType: 'Tujunga loamy sand' },
+        { name: 'Madera West 7', crop: 'tomato', areaHectares: 36.2, regionCode: 'CA-SJV', soilType: 'San Joaquin loam' },
+      ],
+    },
+  };
+
+  function matchResponse(question) {
+    const q = question.toLowerCase();
+    if (q.includes('stress') || q.includes('critical') || q.includes('risk')) return cannedResponses.stress;
+    if (q.includes('yield') || q.includes('production') || q.includes('harvest')) return cannedResponses.yield;
+    if (q.includes('soil') || q.includes('ph') || q.includes('nutrient') || q.includes('nitrogen')) return cannedResponses.soil;
+    return cannedResponses.default;
+  }
+
+  return http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost:4304');
+
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers': 'content-type',
+      });
+      response.end();
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/query') {
+      let body = '';
+      request.on('data', chunk => { body += chunk; });
+      request.on('end', () => {
+        try {
+          const { question } = JSON.parse(body);
+          if (!question || typeof question !== 'string' || !question.trim()) {
+            sendJson(response, 400, { error: 'A question is required.' });
+            return;
+          }
+
+          const matched = matchResponse(question);
+          const result = {
+            question,
+            sql: matched.sql,
+            summary: matched.summary,
+            columns: matched.columns,
+            rows: matched.rows,
+            rowCount: matched.rows.length,
+            executionMs: Math.round(40 + Math.random() * 120),
+            cached: true,
+          };
+
+          // Simulate a small delay for realism
+          setTimeout(() => sendJson(response, 200, result), 150);
+        } catch {
+          sendJson(response, 400, { error: 'Invalid JSON body.' });
+        }
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/cache/status') {
+      sendJson(response, 200, {
+        tables: [
+          { table: 'fields', rowCount: 3, lastSync: new Date(Date.now() - 300000).toISOString(), stale: false },
+          { table: 'soil_tests', rowCount: 3, lastSync: new Date(Date.now() - 300000).toISOString(), stale: false },
+          { table: 'operations', rowCount: 6, lastSync: new Date(Date.now() - 300000).toISOString(), stale: false },
+          { table: 'yield_predictions', rowCount: 3, lastSync: new Date(Date.now() - 600000).toISOString(), stale: false },
+          { table: 'nutrient_balances', rowCount: 3, lastSync: new Date(Date.now() - 600000).toISOString(), stale: false },
+          { table: 'entropy_readings', rowCount: 24, lastSync: new Date(Date.now() - 60000).toISOString(), stale: false },
+        ],
+        lastFullSync: new Date(Date.now() - 300000).toISOString(),
+        healthy: true,
+      });
+      return;
+    }
+
+    notFound(response, url.pathname);
+  });
+}
+
 listen(createWeatherApi(), 4300, 'weather-intelligence');
 listen(createFieldApi(), 4302, 'field-intelligence');
+listen(createQueryApi(), 4304, 'query-intelligence');

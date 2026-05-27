@@ -24,6 +24,6 @@ describe('App', () => {
   it('exposes the correct nav routes', () => {
     const fixture = TestBed.createComponent(App);
     const navRoutes = fixture.componentInstance.navItems.map(n => n.route);
-    expect(navRoutes).toEqual(['/dashboard', '/fields', '/entropy', '/gis']);
+    expect(navRoutes).toEqual(['/dashboard', '/fields', '/entropy', '/gis', '/query']);
   });
 });

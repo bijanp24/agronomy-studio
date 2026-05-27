@@ -1,0 +1,119 @@
+<div class="query-layout">
+
+  <aside class="query-history" aria-label="Query history">
+    <div class="history-header">
+      <h3>History</h3>
+      @if (history().length) {
+        <button mat-icon-button
+                (click)="clearHistory()"
+                matTooltip="Clear history"
+                aria-label="Clear query history">
+          <mat-icon>delete_sweep</mat-icon>
+        </button>
+      }
+    </div>
+
+    @if (history().length) {
+      <ul class="history-list">
+        @for (entry of history(); track entry.timestamp) {
+          <li>
+            <button class="history-item" (click)="selectHistory(entry)">
+              <span class="history-question">{{ entry.question }}</span>
+              <span class="history-meta">{{ entry.rowCount }} rows</span>
+            </button>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="history-empty">No queries yet.</p>
+    }
+  </aside>
+
+  <main class="query-main">
+    <mat-card class="query-input-card">
+      <mat-card-content>
+        <form (ngSubmit)="submit()" class="query-form">
+          <mat-form-field appearance="outline" class="query-field">
+            <mat-label>Ask a question about your field data</mat-label>
+            <textarea matInput
+                      [ngModel]="question()"
+                      (ngModelChange)="question.set($event)"
+                      name="question"
+                      rows="2"
+                      placeholder="e.g. Which fields have high stress scores?"
+                      aria-label="Natural language query input"
+                      [disabled]="loading()"></textarea>
+            <mat-icon matSuffix>psychology</mat-icon>
+          </mat-form-field>
+
+          <button mat-flat-button
+                  color="primary"
+                  type="submit"
+                  [disabled]="!question().trim() || loading()"
+                  aria-label="Submit query">
+            <mat-icon>send</mat-icon>
+            Query
+          </button>
+        </form>
+      </mat-card-content>
+
+      @if (loading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Query in progress"></mat-progress-bar>
+      }
+    </mat-card>
+
+    @if (error()) {
+      <mat-card class="query-error-card">
+        <mat-card-content>
+          <div class="error-message">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ error() }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    @if (result(); as res) {
+      <mat-card class="query-result-card">
+        <mat-card-header>
+          <mat-card-title>Results</mat-card-title>
+          <mat-card-subtitle>
+            {{ res.rowCount }} row{{ res.rowCount !== 1 ? 's' : '' }} · {{ res.executionMs }}ms
+            @if (res.cached) {
+              <mat-icon class="cached-icon" matTooltip="Served from cache">cached</mat-icon>
+            }
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <p class="result-summary">{{ res.summary }}</p>
+
+          <div class="sql-toggle">
+            <mat-slide-toggle [checked]="showSql()" (change)="showSql.set($event.checked)">
+              Show SQL
+            </mat-slide-toggle>
+          </div>
+
+          @if (showSql()) {
+            <pre class="sql-block" aria-label="Generated SQL query"><code>{{ res.sql }}</code></pre>
+          }
+
+          @if (res.rows.length) {
+            <div class="table-container" role="region" aria-label="Query results table" tabindex="0">
+              <table mat-table [dataSource]="res.rows" class="result-table">
+                @for (col of columns(); track col) {
+                  <ng-container [matColumnDef]="col">
+                    <th mat-header-cell *matHeaderCellDef>{{ col }}</th>
+                    <td mat-cell *matCellDef="let row">{{ row[col] }}</td>
+                  </ng-container>
+                }
+                <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+                <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+              </table>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  </main>
+</div>

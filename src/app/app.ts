@@ -48,6 +48,7 @@ export class App {
     { label: 'Fields',     icon: 'agriculture', route: '/fields'    },
     { label: 'Entropy',    icon: 'grain',       route: '/entropy'   },
     { label: 'GIS Blocks', icon: 'map',         route: '/gis'       },
+    { label: 'Query',      icon: 'psychology',  route: '/query'     },
   ];
 
   readonly currentPageTitle = toSignal(
