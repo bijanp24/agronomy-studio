@@ -1,5 +1,8 @@
+export type LlmProvider = 'mock' | 'openai' | 'gemini';
+
 export interface QueryRequest {
   question: string;
+  provider: LlmProvider;
 }
 
 export interface QueryColumn {

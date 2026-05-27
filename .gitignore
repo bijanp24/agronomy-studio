@@ -38,6 +38,13 @@ testem.log
 /typings
 __screenshots__/
 
+# Terraform
+*.tfvars
+*.tfvars.json
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+
 # System files
 .DS_Store
 Thumbs.db

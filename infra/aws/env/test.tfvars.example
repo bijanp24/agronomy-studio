@@ -1,0 +1,7 @@
+environment = "test"
+aws_region  = "us-west-2"
+
+vpc_id             = "vpc-00000000000000000"
+private_subnet_ids = ["subnet-00000000000000000", "subnet-11111111111111111"]
+
+allowed_cidr_blocks = ["10.0.0.0/16"]

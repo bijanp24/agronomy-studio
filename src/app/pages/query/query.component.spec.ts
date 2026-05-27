@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { vi } from 'vitest';
 
 import { QueryComponent } from './query.component';
 
@@ -10,6 +11,15 @@ describe('QueryComponent', () => {
   let fixture: ComponentFixture<QueryComponent>;
 
   beforeEach(async () => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    });
+
     await TestBed.configureTestingModule({
       imports: [QueryComponent],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideAnimationsAsync()],

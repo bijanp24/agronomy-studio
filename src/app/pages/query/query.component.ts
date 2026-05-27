@@ -4,6 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -12,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { QueryService } from '../../services/query.service';
-import { QueryResponse, QueryHistoryEntry } from '../../models/query.models';
+import { LlmProvider, QueryResponse, QueryHistoryEntry } from '../../models/query.models';
 
 const HISTORY_KEY = 'agronomy_query_history';
 
@@ -25,6 +26,7 @@ const HISTORY_KEY = 'agronomy_query_history';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatTableModule,
     MatProgressBarModule,
@@ -39,6 +41,7 @@ export class QueryComponent {
   private queryService = inject(QueryService);
 
   readonly question = signal('');
+  readonly provider = signal<LlmProvider>('mock');
   readonly loading = signal(false);
   readonly result = signal<QueryResponse | null>(null);
   readonly error = signal<string | null>(null);
@@ -55,7 +58,7 @@ export class QueryComponent {
     this.error.set(null);
     this.result.set(null);
 
-    this.queryService.query(q).subscribe({
+    this.queryService.query(q, this.provider()).subscribe({
       next: res => {
         this.result.set(res);
         this.loading.set(false);

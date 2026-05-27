@@ -38,7 +38,10 @@ describe('QueryService', () => {
 
     const req = httpMock.expectOne('/query-api/api/query');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ question: 'Which fields have high stress?' });
+    expect(req.request.body).toEqual({
+      question: 'Which fields have high stress?',
+      provider: 'mock',
+    });
     req.flush(mockResponse);
   });
 

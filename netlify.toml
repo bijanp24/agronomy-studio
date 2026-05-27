@@ -5,6 +5,24 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[context.dev]
+  command = "npm run build:dev"
+
+[context.dev.environment]
+  APP_ENV = "dev"
+
+[context.test]
+  command = "npm run build:test"
+
+[context.test.environment]
+  APP_ENV = "test"
+
+[context.production]
+  command = "npm run build:prod"
+
+[context.production.environment]
+  APP_ENV = "production"
+
 [[redirects]]
   from = "/field-api/*"
   to = "/.netlify/functions/field-api/:splat"
@@ -13,6 +31,11 @@
 [[redirects]]
   from = "/weather-api/*"
   to = "/.netlify/functions/weather-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/query-api/*"
+  to = "/.netlify/functions/query-api/:splat"
   status = 200
 
 [[redirects]]
