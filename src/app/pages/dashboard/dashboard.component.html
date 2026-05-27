@@ -65,6 +65,7 @@
   <h2 class="section-title">Yield Forecast</h2>
   <mat-card>
     <mat-card-content>
+      <div class="table-scroll">
       <table mat-table [dataSource]="fields" class="yield-table">
         <ng-container matColumnDef="fieldName">
           <th mat-header-cell *matHeaderCellDef>Field</th>
@@ -100,6 +101,7 @@
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
       </table>
+      </div>
     </mat-card-content>
   </mat-card>
 }
