@@ -95,6 +95,9 @@
         <mat-divider class="divider" />
 
         <!-- Operations -->
+        @if (d.operations !== undefined && !d.operations.length) {
+          <p class="no-data">No operations recorded for this field.</p>
+        }
         @if (d.operations?.length) {
           <h3 class="sub-title">Recent Operations</h3>
           <table mat-table [dataSource]="d.operations!" class="ops-table">
