@@ -14,7 +14,8 @@
         <a mat-list-item
            [routerLink]="item.route"
            routerLinkActive="nav-active"
-           [routerLinkActiveOptions]="{ exact: false }">
+           [routerLinkActiveOptions]="{ exact: false }"
+           (click)="isMobile() ? sidenav.close() : null">
           <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
           <span matListItemTitle>{{ item.label }}</span>
         </a>
