@@ -38,22 +38,22 @@ export class GisComponent implements OnInit {
   loading = true;
   error = '';
 
-  selectedZone = '';
-  selectedCrop = '';
+  readonly selectedZone = signal('');
+  readonly selectedCrop = signal('');
 
   zones = signal<string[]>([]);
   crops  = signal<string[]>([]);
 
   readonly displayedColumns = ['blockId', 'cropType', 'soilType', 'irrigationZone', 'elevationM', 'center'];
 
-  readonly filtered = computed(() => {
-    return this.features()
-      .filter(f =>
-        (!this.selectedZone || f.properties.irrigationZone === this.selectedZone) &&
-        (!this.selectedCrop || f.properties.cropType === this.selectedCrop)
-      )
-      .slice(0, 150);
-  });
+  readonly filteredAll = computed(() =>
+    this.features().filter(f =>
+      (!this.selectedZone() || f.properties.irrigationZone === this.selectedZone()) &&
+      (!this.selectedCrop()  || f.properties.cropType       === this.selectedCrop())
+    )
+  );
+
+  readonly filtered = computed(() => this.filteredAll().slice(0, 150));
 
   ngOnInit() {
     this.service.getGisBlocks().subscribe({
@@ -68,10 +68,6 @@ export class GisComponent implements OnInit {
   }
 
   get filteredCount(): number {
-    return this.features()
-      .filter(f =>
-        (!this.selectedZone || f.properties.irrigationZone === this.selectedZone) &&
-        (!this.selectedCrop || f.properties.cropType === this.selectedCrop)
-      ).length;
+    return this.filteredAll().length;
   }
 }

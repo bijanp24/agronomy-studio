@@ -16,7 +16,7 @@
     <mat-card-content>
       <mat-form-field appearance="outline">
         <mat-label>Irrigation Zone</mat-label>
-        <mat-select [(ngModel)]="selectedZone">
+        <mat-select [ngModel]="selectedZone()" (ngModelChange)="selectedZone.set($event)">
           <mat-option value="">All zones</mat-option>
           @for (z of zones(); track z) {
             <mat-option [value]="z">{{ z }}</mat-option>
@@ -26,7 +26,7 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Crop Type</mat-label>
-        <mat-select [(ngModel)]="selectedCrop">
+        <mat-select [ngModel]="selectedCrop()" (ngModelChange)="selectedCrop.set($event)">
           <mat-option value="">All crops</mat-option>
           @for (c of crops(); track c) {
             <mat-option [value]="c">{{ c }}</mat-option>
