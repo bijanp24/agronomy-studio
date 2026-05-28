@@ -8,14 +8,14 @@
 
 .field-panel { margin-bottom: 8px; }
 
-.field-icon { margin-right: 8px; color: #16803c; vertical-align: middle; }
+.field-icon { margin-right: 8px; color: var(--theme-success); vertical-align: middle; }
 
 .panel-body { padding: 8px 0; }
 
 .sub-title {
   font-size: 14px;
   font-weight: 700;
-  color: #1b3a2d;
+  color: var(--theme-primary);
   margin: 16px 0 10px;
 }
 
@@ -33,10 +33,10 @@
   mat-card-content { padding: 12px !important; }
   .npk-label   { font-size: 18px; font-weight: 900; }
   .npk-balance { font-size: 20px; font-weight: 700; margin: 4px 0; }
-  .npk-detail  { font-size: 10px; color: #5b6677; }
-  &.npk-ok     { background: #dcfce7; .npk-label { color: #14532d; } }
-  &.npk-warn   { background: #fef3c7; .npk-label { color: #78350f; } }
-  &.npk-danger { background: #fee2e2; .npk-label { color: #7f1d1d; } }
+  .npk-detail  { font-size: 10px; color: var(--theme-muted); }
+  &.npk-ok     { background: var(--theme-success-soft); .npk-label { color: #14532d; } }
+  &.npk-warn   { background: var(--theme-warning-soft); .npk-label { color: #78350f; } }
+  &.npk-danger { background: var(--theme-danger-soft); .npk-label { color: #7f1d1d; } }
 }
 
 .warnings { margin-bottom: 8px; }
@@ -45,7 +45,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #b45309;
+  color: var(--theme-warning);
   margin-bottom: 4px;
   .warn-icon { font-size: 16px; width: 16px; height: 16px; }
 }
@@ -57,7 +57,7 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
-  .yield-val { font-size: 28px; font-weight: 900; color: #1b3a2d; }
+  .yield-val { font-size: 28px; font-weight: 900; color: var(--theme-primary); }
 }
 
 .factors-grid {
@@ -68,11 +68,11 @@
 }
 
 .factor-item {
-  .factor-label { font-size: 11px; color: #5b6677; margin-bottom: 4px; }
-  .factor-pct   { font-size: 11px; color: #1b3a2d; font-weight: 700; margin-top: 2px; }
+  .factor-label { font-size: 11px; color: var(--theme-muted); margin-bottom: 4px; }
+  .factor-pct   { font-size: 11px; color: var(--theme-primary); font-weight: 700; margin-top: 2px; }
 }
 
-.limiting { font-size: 12px; color: #b45309; margin: 4px 0 0; }
+.limiting { font-size: 12px; color: var(--theme-warning); margin: 4px 0 0; }
 
 .ops-table { width: 100%; font-size: 13px; }
 .no-data { font-size: 13px; color: var(--color-muted); margin: 4px 0; }
@@ -92,7 +92,7 @@
 }
 
 .soil-stat {
-  background: #f8f9fc;
+  background: var(--theme-surface-hover);
   border-radius: 8px;
   padding: 10px 8px;
   text-align: center;

@@ -106,7 +106,7 @@
           @if (h.records.length) {
             <svg class="sparkline" viewBox="0 0 600 80" preserveAspectRatio="none">
               <path [attr.d]="sparklinePath(h.records)"
-                    fill="none" stroke="#7c3aed" stroke-width="2" />
+                    fill="none" stroke="var(--theme-accent)" stroke-width="2" />
               <path [attr.d]="meanLine(h)"
                     fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" />
             </svg>

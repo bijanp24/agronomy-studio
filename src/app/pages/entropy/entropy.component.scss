@@ -24,16 +24,16 @@
   .entropy-number {
     font-size: 48px;
     font-weight: 900;
-    color: #7c3aed;
+    color: var(--theme-accent);
     font-family: monospace;
   }
-  .entropy-label { font-size: 12px; color: #5b6677; margin-bottom: 12px; }
+  .entropy-label { font-size: 12px; color: var(--theme-muted); margin-bottom: 12px; }
   .entropy-bar { margin-bottom: 8px; }
-  .entropy-loc { font-size: 11px; color: #5b6677; }
+  .entropy-loc { font-size: 11px; color: var(--theme-muted); }
 }
 
-.entropy-bar { --mdc-linear-progress-active-indicator-color: #7c3aed; }
-.gauge-bar   { --mdc-linear-progress-active-indicator-color: #16803c; }
+.entropy-bar { --mdc-linear-progress-active-indicator-color: var(--theme-accent); }
+.gauge-bar   { --mdc-linear-progress-active-indicator-color: var(--theme-success); }
 
 .outcomes-grid {
   display: grid;
@@ -45,9 +45,9 @@
 .outcome-card {
   text-align: center;
   mat-card-content { padding: 12px !important; }
-  mat-icon { color: #7c3aed; font-size: 20px; }
-  .outcome-val   { font-size: 24px; font-weight: 900; color: #1b3a2d; }
-  .outcome-label { font-size: 11px; color: #5b6677; }
+  mat-icon { color: var(--theme-accent); font-size: 20px; }
+  .outcome-val   { font-size: 24px; font-weight: 900; color: var(--theme-primary); }
+  .outcome-label { font-size: 11px; color: var(--theme-muted); }
 }
 
 .gauge-row {
@@ -56,7 +56,7 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-  .gauge-label { font-size: 12px; color: #5b6677; }
+  .gauge-label { font-size: 12px; color: var(--theme-muted); }
   .gauge-val   { font-size: 12px; font-weight: 700; text-align: right; }
 }
 
@@ -68,7 +68,7 @@
   height: 80px;
   display: block;
   border-radius: 4px;
-  background: #f5f0ff;
+  background: var(--theme-accent-soft);
   margin-bottom: 10px;
 }
 
@@ -76,10 +76,10 @@
   display: flex;
   gap: 12px;
   font-size: 12px;
-  color: #5b6677;
+  color: var(--theme-muted);
   margin-bottom: 12px;
   flex-wrap: wrap;
-  strong { color: #7c3aed; }
+  strong { color: var(--theme-accent); }
 }
 
 .history-list { max-height: 400px; overflow-y: auto; }
@@ -88,13 +88,13 @@
   display: flex;
   justify-content: space-between;
   padding: 4px 0;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--theme-border-subtle);
   font-size: 12px;
-  .h-time { color: #5b6677; }
-  .h-val  { font-family: monospace; font-weight: 700; color: #7c3aed; }
+  .h-time { color: var(--theme-muted); }
+  .h-val  { font-family: monospace; font-weight: 700; color: var(--theme-accent); }
 }
 
-.muted { color: #5b6677; font-size: 13px; }
+.muted { color: var(--theme-muted); font-size: 13px; }
 
 @media (max-width: 900px) {
   .entropy-layout { grid-template-columns: 1fr; }
