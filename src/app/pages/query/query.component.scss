@@ -10,10 +10,11 @@
 }
 
 .query-history {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--theme-shadow-sm);
 
   .history-header {
     display: flex;
@@ -24,7 +25,7 @@
       margin: 0;
       font-size: 14px;
       font-weight: 600;
-      color: #374151;
+      color: var(--theme-fg);
     }
   }
 
@@ -47,12 +48,12 @@
     text-align: left;
 
     &:hover {
-      background: #f3f4f6;
+      background: var(--theme-surface-hover);
     }
 
     .history-question {
       font-size: 12px;
-      color: #1f2937;
+      color: var(--theme-fg);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -61,14 +62,14 @@
 
     .history-meta {
       font-size: 10px;
-      color: #9ca3af;
+      color: var(--theme-subtle);
       margin-top: 2px;
     }
   }
 
   .history-empty {
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--theme-subtle);
     margin: 12px 0 0;
   }
 }
@@ -116,10 +117,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #dc2626;
+    color: var(--theme-danger);
 
     mat-icon {
-      color: #dc2626;
+      color: var(--theme-danger);
     }
   }
 }
@@ -127,7 +128,7 @@
 .query-result-card {
   .result-summary {
     font-size: 14px;
-    color: #374151;
+    color: var(--theme-fg);
     margin-bottom: 12px;
     line-height: 1.5;
   }
@@ -137,7 +138,7 @@
     width: 16px;
     height: 16px;
     vertical-align: text-bottom;
-    color: #4ade80;
+    color: var(--theme-accent);
   }
 
   .sql-toggle {
@@ -161,7 +162,7 @@
   .table-container {
     overflow-x: auto;
     border-radius: 8px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--theme-border);
   }
 
   .result-table {

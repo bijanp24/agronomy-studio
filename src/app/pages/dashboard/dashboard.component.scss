@@ -7,15 +7,15 @@
 
 .kpi-card {
   text-align: center;
-  .kpi-value { font-size: 32px; font-weight: 900; color: #1b3a2d; }
-  .kpi-label { font-size: 12px; color: #5b6677; margin-top: 4px; }
-  &.has-issues .kpi-value { color: #dc2626; }
+  .kpi-value { font-size: 32px; font-weight: 900; color: var(--theme-primary); }
+  .kpi-label { font-size: 12px; color: var(--theme-muted); margin-top: 4px; }
+  &.has-issues .kpi-value { color: var(--theme-danger); }
 }
 
 .section-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1b3a2d;
+  color: var(--theme-primary);
   margin: 24px 0 12px;
 }
 
@@ -34,20 +34,20 @@
   mat-card-content { padding: 12px !important; }
 
   .stress-field-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
-  .stress-crop { font-size: 11px; color: #5b6677; text-transform: capitalize; margin-bottom: 8px; }
+  .stress-crop { font-size: 11px; color: var(--theme-muted); text-transform: capitalize; margin-bottom: 8px; }
   .stress-score { font-size: 28px; font-weight: 900; line-height: 1; }
   .stress-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
 
-  &.stress-low      { background: #bbf7d0; }
-  &.stress-moderate { background: #fde68a; }
+  &.stress-low      { background: var(--theme-success-soft); }
+  &.stress-moderate { background: var(--theme-warning-soft); }
   &.stress-high     { background: #fca5a5; }
   &.stress-critical { background: #f87171; }
 }
 
 .stress-bar { margin-top: 4px; }
-.stress-bar-low      { --mdc-linear-progress-active-indicator-color: #16803c; }
-.stress-bar-moderate { --mdc-linear-progress-active-indicator-color: #b45309; }
-.stress-bar-high     { --mdc-linear-progress-active-indicator-color: #dc2626; }
+.stress-bar-low      { --mdc-linear-progress-active-indicator-color: var(--theme-success); }
+.stress-bar-moderate { --mdc-linear-progress-active-indicator-color: var(--theme-warning); }
+.stress-bar-high     { --mdc-linear-progress-active-indicator-color: var(--theme-danger); }
 .stress-bar-critical { --mdc-linear-progress-active-indicator-color: #7f1d1d; }
 
 .table-scroll { overflow-x: auto; }
@@ -62,8 +62,8 @@
   font-size: 12px;
   font-weight: 700;
   text-transform: capitalize;
-  &.stress-low      { background: #bbf7d0; color: #14532d; }
-  &.stress-moderate { background: #fde68a; color: #78350f; }
+  &.stress-low      { background: var(--theme-success-soft); color: #14532d; }
+  &.stress-moderate { background: var(--theme-warning-soft); color: #78350f; }
   &.stress-high     { background: #fca5a5; color: #7f1d1d; }
   &.stress-critical { background: #f87171; color: #450a0a; }
 }

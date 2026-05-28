@@ -1,11 +1,12 @@
 @use '@angular/material' as mat;
+@import '@bijanp24/common/styles/theme.css';
 
 html {
   height: 100%;
   @include mat.theme((
     color: (
-      primary: mat.$green-palette,
-      tertiary: mat.$violet-palette,
+      primary: mat.$orange-palette,
+      tertiary: mat.$yellow-palette,
     ),
     typography: Roboto,
     density: 0,
@@ -14,25 +15,30 @@ html {
 
 body {
   color-scheme: light;
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
+  background-color: var(--theme-bg);
+  color: var(--theme-fg);
   font: var(--mat-sys-body-medium);
   margin: 0;
   height: 100%;
 }
 
 /* Global mat-card default elevation */
-mat-card { border-radius: 10px !important; }
+mat-card {
+  background: var(--theme-surface) !important;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px !important;
+  box-shadow: var(--theme-shadow-sm) !important;
+}
 
 /* Thin scrollbars */
-* { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--theme-border) transparent; }
 
-/* Brand tokens */
+/* Compatibility tokens for existing component styles */
 :root {
-  --color-brand-dark:   #1b3a2d;
-  --color-brand-accent: #4ade80;
-  --color-muted:        #5b6677;
-  --color-bg:           #f0f2f5;
+  --color-brand-dark: var(--theme-primary);
+  --color-brand-accent: var(--theme-accent);
+  --color-muted: var(--theme-muted);
+  --color-bg: var(--theme-bg);
 }
 
 /* Shared page layout */
@@ -47,7 +53,7 @@ mat-card { border-radius: 10px !important; }
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #b42318;
+  color: var(--theme-danger);
 }
 
 /* Confidence chip — shared across dashboard and fields */
@@ -57,13 +63,16 @@ mat-card { border-radius: 10px !important; }
   border-radius: 12px;
   font-size: 12px;
   font-weight: 700;
-  &.conf-high   { background: #dcfce7; color: #14532d; }
-  &.conf-medium { background: #fef3c7; color: #78350f; }
-  &.conf-low    { background: #fee2e2; color: #7f1d1d; }
+  &.conf-high   { background: var(--theme-success-soft); color: #14532d; }
+  &.conf-medium { background: var(--theme-warning-soft); color: #78350f; }
+  &.conf-low    { background: var(--theme-danger-soft); color: #7f1d1d; }
 }
 
 /* Generic utility */
 .capitalize { text-transform: capitalize; }
 
 /* Error snackbar */
-.error-snack { --mdc-snackbar-container-color: #7f1d1d; --mdc-snackbar-supporting-text-color: #fff; }
+.error-snack {
+  --mdc-snackbar-container-color: #7f1d1d;
+  --mdc-snackbar-supporting-text-color: #fff;
+}
