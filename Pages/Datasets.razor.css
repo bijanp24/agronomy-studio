@@ -1,0 +1,60 @@
+.controls-card {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.result-count {
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+}
+
+.dataset-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.dataset-title {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+}
+
+.dataset-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--theme-muted, #6b7280);
+    margin-bottom: 0.5rem;
+}
+
+.dataset-meta .dot {
+    opacity: 0.5;
+}
+
+.dataset-desc {
+    margin: 0 0 0.6rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.keyword-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.keyword-chip {
+    font-size: 0.72rem;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    background: var(--theme-surface-alt, #f3f4f6);
+    color: var(--theme-muted, #4b5563);
+    border: 1px solid var(--theme-border, #e5e7eb);
+}

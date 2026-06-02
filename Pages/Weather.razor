@@ -1,0 +1,173 @@
+@page "/weather"
+@using System.Globalization
+@inject WeatherForecastService Forecast
+
+<PageTitle>Weather · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Weather &amp; Agronomic Forecast</h1>
+    <p class="page-sub">7-day outlook from Open-Meteo — temperature, precipitation, UV, and reference ET₀</p>
+</div>
+
+<div class="studio-card controls-card">
+    <label class="location-field">
+        <span class="field-label">Location</span>
+        <select class="text-input" @onchange="OnLocationChanged">
+            @foreach (var loc in Locations)
+            {
+                <option value="@loc.Name" selected="@(loc.Name == _selected.Name)">@loc.Name</option>
+            }
+        </select>
+    </label>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        Could not load the forecast for @_selected.Name.
+    </div>
+}
+
+@if (!_loading && !_hasError && _forecast?.Current is { } current)
+{
+    <div class="kpi-row">
+        <div class="studio-card kpi-card">
+            <div class="kpi-value">@current.Temperature.ToString("0", CultureInfo.InvariantCulture)°F</div>
+            <div class="kpi-label">@WeatherText(current.WeatherCode)</div>
+        </div>
+        <div class="studio-card kpi-card">
+            <div class="kpi-value">@current.RelativeHumidity.ToString("0", CultureInfo.InvariantCulture)%</div>
+            <div class="kpi-label">Relative Humidity</div>
+        </div>
+        <div class="studio-card kpi-card">
+            <div class="kpi-value">@current.WindSpeed.ToString("0", CultureInfo.InvariantCulture) mph</div>
+            <div class="kpi-label">Wind Speed</div>
+        </div>
+        <div class="studio-card kpi-card">
+            <div class="kpi-value">@current.Precipitation.ToString("0.##", CultureInfo.InvariantCulture) in</div>
+            <div class="kpi-label">Current Precip</div>
+        </div>
+    </div>
+
+    <h2 class="section-title">7-Day Forecast</h2>
+    <div class="studio-card">
+        <div class="table-scroll">
+            <table class="studio-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>High / Low</th>
+                        <th>Precip</th>
+                        <th>UV Index</th>
+                        <th>ET₀ (in)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < DayCount; i++)
+                    {
+                        var daily = _forecast.Daily!;
+                        <tr>
+                            <td>@LongDate(daily.Time[i])</td>
+                            <td>
+                                <strong>@daily.TemperatureMax[i].ToString("0", CultureInfo.InvariantCulture)°</strong>
+                                <span class="muted"> / @daily.TemperatureMin[i].ToString("0", CultureInfo.InvariantCulture)°</span>
+                            </td>
+                            <td>@daily.PrecipitationSum[i].ToString("0.##", CultureInfo.InvariantCulture) in</td>
+                            <td>
+                                <span class="uv-chip @UvClass(daily.UvIndexMax[i])">
+                                    @daily.UvIndexMax[i].ToString("0.#", CultureInfo.InvariantCulture)
+                                </span>
+                            </td>
+                            <td>@daily.Et0Evapotranspiration[i].ToString("0.##", CultureInfo.InvariantCulture)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="muted source-note">Source: Open-Meteo · @_selected.Name (@_selected.Latitude.ToString(CultureInfo.InvariantCulture), @_selected.Longitude.ToString(CultureInfo.InvariantCulture))</p>
+}
+
+@code {
+    private readonly record struct Location(string Name, double Latitude, double Longitude);
+
+    private static readonly Location[] Locations =
+    {
+        new("Fresno, CA", 36.7378, -119.7871),
+        new("Bakersfield, CA", 35.3733, -119.0187),
+        new("Salinas, CA", 36.6777, -121.6555),
+        new("Sacramento, CA", 38.5816, -121.4944),
+        new("Modesto, CA", 37.6391, -120.9969),
+    };
+
+    private Location _selected = Locations[0];
+    private OpenMeteoForecast? _forecast;
+    private bool _loading = true;
+    private bool _hasError;
+
+    private int DayCount => _forecast?.Daily is { } d ? d.Time.Count : 0;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            _forecast = await Forecast.GetForecastAsync(_selected.Latitude, _selected.Longitude);
+            if (_forecast?.Daily is null)
+            {
+                _hasError = true;
+            }
+        }
+        catch
+        {
+            _hasError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnLocationChanged(ChangeEventArgs e)
+    {
+        var name = e.Value?.ToString();
+        _selected = Locations.FirstOrDefault(l => l.Name == name, Locations[0]);
+        await Load();
+    }
+
+    private static string LongDate(string value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToString("ddd, MMM d", CultureInfo.InvariantCulture)
+            : value;
+
+    private static string UvClass(double uv) => uv switch
+    {
+        >= 8 => "uv-high",
+        >= 6 => "uv-mod",
+        _ => "uv-low",
+    };
+
+    private static string WeatherText(int code) => code switch
+    {
+        0 => "Clear sky",
+        1 or 2 => "Partly cloudy",
+        3 => "Overcast",
+        45 or 48 => "Fog",
+        51 or 53 or 55 => "Drizzle",
+        61 or 63 or 65 => "Rain",
+        71 or 73 or 75 => "Snow",
+        80 or 81 or 82 => "Rain showers",
+        95 or 96 or 99 => "Thunderstorm",
+        _ => "Conditions",
+    };
+}

@@ -1,0 +1,130 @@
+@page "/datasets"
+@using System.Globalization
+@inject DatasetsService Catalog
+
+<PageTitle>Datasets · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Government Datasets</h1>
+    <p class="page-sub">Search the Data.gov catalog for agriculture, climate, and public-health datasets</p>
+</div>
+
+<div class="studio-card controls-card">
+    <input class="text-input search-input"
+           value="@_query"
+           @oninput="OnQueryInput"
+           @onkeyup="OnKeyUp"
+           placeholder="Search datasets (e.g. irrigation, soil, climate)" />
+    <button class="btn btn-primary" @onclick="Search" disabled="@_loading">
+        <span class="bi bi-search" aria-hidden="true"></span> Search
+    </button>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        Could not reach the Data.gov catalog.
+    </div>
+}
+
+@if (!_loading && !_hasError)
+{
+    @if (_results.Count == 0)
+    {
+        <div class="studio-card muted">No datasets matched “@_lastQuery”.</div>
+    }
+    else
+    {
+        <p class="muted result-count">@_results.Count results for “@_lastQuery”</p>
+        <div class="dataset-list">
+            @foreach (var ds in _results)
+            {
+                <div class="studio-card dataset-card">
+                    <h2 class="dataset-title">
+                        <a href="@ds.LandingPage" target="_blank" rel="noopener">@ds.Title</a>
+                    </h2>
+                    <div class="dataset-meta">
+                        @if (!string.IsNullOrEmpty(ds.Organization))
+                        {
+                            <span class="bi bi-building" aria-hidden="true"></span>
+                            <span>@ds.Organization</span>
+                        }
+                        @if (!string.IsNullOrEmpty(ds.LastHarvested))
+                        {
+                            <span class="dot">·</span>
+                            <span>updated @ShortDate(ds.LastHarvested)</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(ds.Description))
+                    {
+                        <p class="dataset-desc">@Truncate(ds.Description, 260)</p>
+                    }
+                    @if (ds.Keywords.Count > 0)
+                    {
+                        <div class="keyword-row">
+                            @foreach (var kw in ds.Keywords.Take(6))
+                            {
+                                <span class="keyword-chip">@kw</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private string _query = "agriculture";
+    private string _lastQuery = "agriculture";
+    private List<CatalogDataset> _results = new();
+    private bool _loading = true;
+    private bool _hasError;
+
+    protected override async Task OnInitializedAsync() => await Search();
+
+    private async Task Search()
+    {
+        var q = string.IsNullOrWhiteSpace(_query) ? "agriculture" : _query.Trim();
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            var response = await Catalog.SearchAsync(q);
+            _results = response?.Results ?? new();
+            _lastQuery = q;
+        }
+        catch
+        {
+            _hasError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnQueryInput(ChangeEventArgs e) => _query = e.Value?.ToString() ?? "";
+
+    private async Task OnKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await Search();
+        }
+    }
+
+    private static string ShortDate(string value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+            : value;
+
+    private static string Truncate(string text, int max) =>
+        text.Length <= max ? text : text[..max].TrimEnd() + "…";
+}

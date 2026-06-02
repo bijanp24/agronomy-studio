@@ -1,0 +1,76 @@
+.indicator-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.indicator-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.card-title {
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.indicator-freq {
+    font-size: 0.72rem;
+    color: var(--theme-muted, #6b7280);
+    white-space: nowrap;
+}
+
+.indicator-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.indicator-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.indicator-units {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--theme-muted, #6b7280);
+}
+
+.indicator-change {
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.indicator-change.up {
+    color: #b91c1c;
+}
+
+.indicator-change.down {
+    color: #15803d;
+}
+
+.indicator-asof {
+    font-size: 0.75rem;
+    color: var(--theme-muted, #6b7280);
+    margin-top: 0.25rem;
+}
+
+.sparkline {
+    width: 100%;
+    height: 56px;
+    margin-top: 0.75rem;
+    display: block;
+}
+
+.source-note {
+    margin-top: 1.25rem;
+    font-size: 0.78rem;
+}
