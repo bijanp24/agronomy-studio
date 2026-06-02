@@ -5,6 +5,7 @@ import { getForecastEt } from './fret';
 import type { Logger } from './http';
 import { computeIrrigation } from './irrigation';
 import { getSoilProfile } from './soil';
+import { getWaterQuality } from './waterquality';
 import type {
   AgronomyLocationSummary,
   CropWaterCoefficient,
@@ -96,6 +97,7 @@ const defaultProviders: GatewayProviders = {
   getForecast: (point, logger) => getForecastEt(point, { logger }),
   getSoil: (point, logger) => getSoilProfile(point, { logger }),
   getCropCoefficient: async (cropId, cropName) => findCoefficient(cropId, cropName),
+  getWaterQuality: (point, logger) => getWaterQuality(point, { radiusMiles: 5, limit: 10, logger }),
   getDatasets: (query, logger) => searchPackages(query, { rows: 5, logger }),
 };
 

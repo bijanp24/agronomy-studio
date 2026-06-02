@@ -60,6 +60,11 @@
   status = 200
 
 [[redirects]]
+  from = "/waterquality-api/*"
+  to = "/.netlify/functions/waterquality-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/agronomy-api/*"
   to = "/.netlify/functions/agronomy-api/:splat"
   status = 200
