@@ -176,9 +176,16 @@ function sendJson(statusCode, body) {
 
 function functionPath(event) {
   const path = event.path ?? '/';
-  const marker = '/.netlify/functions/query-api';
-  const index = path.indexOf(marker);
-  return index >= 0 ? path.slice(index + marker.length) || '/' : path;
+  // Strip whichever prefix is present: the direct function URL
+  // (/.netlify/functions/query-api/...) or the public redirect path (/query-api/...).
+  const markers = ['/.netlify/functions/query-api', '/query-api'];
+  for (const marker of markers) {
+    const index = path.indexOf(marker);
+    if (index >= 0) {
+      return path.slice(index + marker.length) || '/';
+    }
+  }
+  return path;
 }
 
 export async function handler(event) {
