@@ -55,6 +55,11 @@
   status = 200
 
 [[redirects]]
+  from = "/cnra-api/*"
+  to = "/.netlify/functions/cnra-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/agronomy-api/*"
   to = "/.netlify/functions/agronomy-api/:splat"
   status = 200

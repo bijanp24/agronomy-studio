@@ -1,4 +1,5 @@
 import { getCurrentEto as getCimisEto } from './cimis';
+import { searchPackages } from './cnra';
 import { findCoefficient } from './crop';
 import { getForecastEt } from './fret';
 import type { Logger } from './http';
@@ -95,6 +96,7 @@ const defaultProviders: GatewayProviders = {
   getForecast: (point, logger) => getForecastEt(point, { logger }),
   getSoil: (point, logger) => getSoilProfile(point, { logger }),
   getCropCoefficient: async (cropId, cropName) => findCoefficient(cropId, cropName),
+  getDatasets: (query, logger) => searchPackages(query, { rows: 5, logger }),
 };
 
 let activeProviders: GatewayProviders = defaultProviders;
