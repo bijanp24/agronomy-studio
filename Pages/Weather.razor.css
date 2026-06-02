@@ -1,0 +1,43 @@
+.controls-card {
+    margin-bottom: 1rem;
+}
+
+.location-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-width: 280px;
+}
+
+.field-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--theme-muted, #6b7280);
+}
+
+.uv-chip {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+}
+
+.uv-low {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.uv-mod {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+.uv-high {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.source-note {
+    margin-top: 1rem;
+    font-size: 0.78rem;
+}

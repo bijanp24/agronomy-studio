@@ -1,0 +1,166 @@
+@page "/space"
+@using System.Globalization
+@inject SpaceService Nasa
+
+<PageTitle>Space · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>NASA Open Data</h1>
+    <p class="page-sub">Astronomy picture of the day, latest Mars rover imagery, and near-earth objects</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+<section class="space-section">
+    <h2 class="section-title">Astronomy Picture of the Day</h2>
+    @if (_apod is not null)
+    {
+        <div class="studio-card apod-card">
+            @if (_apod.MediaType == "image")
+            {
+                <img class="apod-img" src="@_apod.Url" alt="@_apod.Title" loading="lazy" />
+            }
+            else
+            {
+                <a class="btn btn-primary" href="@_apod.Url" target="_blank" rel="noopener">
+                    <span class="bi bi-play-circle" aria-hidden="true"></span> View media
+                </a>
+            }
+            <div class="apod-body">
+                <h3 class="apod-title">@_apod.Title</h3>
+                <p class="apod-date">@ShortDate(_apod.Date)@(string.IsNullOrEmpty(_apod.Copyright) ? "" : $" · © {_apod.Copyright}")</p>
+                <p class="apod-text">@_apod.Explanation</p>
+            </div>
+        </div>
+    }
+    else if (!_loading)
+    {
+        <div class="studio-card muted">Astronomy picture unavailable right now.</div>
+    }
+</section>
+
+<section class="space-section">
+    <h2 class="section-title">Latest Mars Rover Photos</h2>
+    @if (_marsPhotos.Count > 0)
+    {
+        <div class="mars-grid">
+            @foreach (var photo in _marsPhotos.Take(8))
+            {
+                <a class="mars-tile" href="@photo.ImgSrc" target="_blank" rel="noopener" title="@photo.Camera?.FullName">
+                    <img src="@photo.ImgSrc" alt="@(photo.Camera?.FullName ?? "Mars rover photo")" loading="lazy" />
+                    <span class="mars-cam">@photo.Camera?.Name · @ShortDate(photo.EarthDate)</span>
+                </a>
+            }
+        </div>
+    }
+    else if (!_loading)
+    {
+        <div class="studio-card muted">No recent rover photos returned.</div>
+    }
+</section>
+
+<section class="space-section">
+    <h2 class="section-title">Near-Earth Objects (next 7 days)</h2>
+    @if (_neos.Count > 0)
+    {
+        <div class="studio-card">
+            <div class="table-scroll">
+                <table class="studio-table">
+                    <thead>
+                        <tr>
+                            <th>Object</th>
+                            <th>Closest Approach</th>
+                            <th>Miss Distance</th>
+                            <th>Velocity</th>
+                            <th>Hazard</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var neo in _neos)
+                        {
+                            var approach = neo.CloseApproachData.FirstOrDefault();
+                            <tr>
+                                <td>
+                                    <a href="@neo.NasaJplUrl" target="_blank" rel="noopener">@neo.Name</a>
+                                </td>
+                                <td>@(approach?.CloseApproachDate ?? "—")</td>
+                                <td>@FormatKm(approach?.MissDistance?.Kilometers) km</td>
+                                <td>@FormatKm(approach?.RelativeVelocity?.KilometersPerHour) km/h</td>
+                                <td>
+                                    @if (neo.IsPotentiallyHazardous)
+                                    {
+                                        <span class="hazard-chip hazard-yes">Potentially hazardous</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="hazard-chip hazard-no">No</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else if (!_loading)
+    {
+        <div class="studio-card muted">Near-earth object feed unavailable.</div>
+    }
+</section>
+
+@code {
+    private AstronomyPicture? _apod;
+    private List<MarsPhoto> _marsPhotos = new();
+    private List<NeoObject> _neos = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var apodTask = SafeAsync(() => Nasa.GetAstronomyPictureAsync());
+        var marsTask = SafeAsync(() => Nasa.GetMarsPhotosAsync());
+        var neoTask = SafeAsync(() => Nasa.GetNearEarthObjectsAsync());
+
+        _apod = await apodTask;
+
+        var mars = await marsTask;
+        _marsPhotos = mars?.LatestPhotos ?? new();
+
+        var feed = await neoTask;
+        if (feed is not null)
+        {
+            _neos = feed.NearEarthObjects
+                .SelectMany(kvp => kvp.Value)
+                .OrderBy(n => n.CloseApproachData.FirstOrDefault()?.CloseApproachDate)
+                .Take(12)
+                .ToList();
+        }
+
+        _loading = false;
+    }
+
+    private static async Task<T?> SafeAsync<T>(Func<Task<T?>> action)
+    {
+        try
+        {
+            return await action();
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
+    private static string ShortDate(string? value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+            : value ?? "";
+
+    private static string FormatKm(string? value) =>
+        double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var num)
+            ? num.ToString("N0", CultureInfo.InvariantCulture)
+            : "—";
+}

@@ -10,6 +10,10 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var fieldApi = builder.Configuration["Api:FieldApi"] ?? "/field-api";
 var weatherApi = builder.Configuration["Api:WeatherApi"] ?? "/weather-api";
 var queryApi = builder.Configuration["Api:QueryApi"] ?? "/query-api";
+var fredApi = builder.Configuration["Api:FredApi"] ?? "/fred-api";
+var datagovApi = builder.Configuration["Api:DatagovApi"] ?? "/datagov-api";
+var nasaApi = builder.Configuration["Api:NasaApi"] ?? "https://api.nasa.gov";
+var openMeteoApi = builder.Configuration["Api:OpenMeteoApi"] ?? "https://api.open-meteo.com";
 
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddTransient(sp => new ApiErrorHandler(sp.GetRequiredService<NotificationService>()));
@@ -29,10 +33,18 @@ void AddApiClient(string name, string baseUrl) =>
 AddApiClient(ApiClients.Field, fieldApi);
 AddApiClient(ApiClients.Weather, weatherApi);
 AddApiClient(ApiClients.Query, queryApi);
+AddApiClient(ApiClients.Economy, fredApi);
+AddApiClient(ApiClients.Datasets, datagovApi);
+AddApiClient(ApiClients.Space, nasaApi);
+AddApiClient(ApiClients.Forecast, openMeteoApi);
 
 builder.Services.AddScoped<FieldIntelligenceService>();
 builder.Services.AddScoped<WeatherService>();
 builder.Services.AddScoped<QueryService>();
 builder.Services.AddScoped<BrowserStorage>();
+builder.Services.AddScoped<EconomyService>();
+builder.Services.AddScoped<DatasetsService>();
+builder.Services.AddScoped<SpaceService>();
+builder.Services.AddScoped<WeatherForecastService>();
 
 await builder.Build().RunAsync();

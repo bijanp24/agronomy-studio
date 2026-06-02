@@ -1,0 +1,129 @@
+@page "/economy"
+@using System.Globalization
+@inject EconomyService Fred
+
+<PageTitle>Economy · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Economic Signals</h1>
+    <p class="page-sub">Macro indicators from FRED (St. Louis Fed) — inflation, labor, rates, recession risk</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        @_errorMessage
+    </div>
+}
+
+@if (!_loading && !_hasError)
+{
+    <div class="indicator-grid">
+        @foreach (var ind in _indicators)
+        {
+            <div class="studio-card indicator-card">
+                <div class="indicator-head">
+                    <h2 class="card-title">@ind.Title</h2>
+                    <span class="indicator-freq">@FrequencyLabel(ind.Frequency)</span>
+                </div>
+
+                <div class="indicator-value-row">
+                    <div class="indicator-value">
+                        @FormatValue(ind.Latest?.Value) <span class="indicator-units">@ind.Units</span>
+                    </div>
+                    @if (ind.Change is { } change)
+                    {
+                        <span class="indicator-change @(change >= 0 ? "up" : "down")">
+                            <span class="bi @(change >= 0 ? "bi-arrow-up-right" : "bi-arrow-down-right")" aria-hidden="true"></span>
+                            @FormatValue(Math.Abs(change))
+                        </span>
+                    }
+                </div>
+
+                <div class="indicator-asof">as of @ShortDate(ind.Latest?.Date)</div>
+
+                @if (ind.Observations.Count > 1)
+                {
+                    <svg class="sparkline" viewBox="0 0 600 80" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="@SparklinePath(ind.Observations)" fill="none" stroke="var(--theme-accent)" stroke-width="2" />
+                    </svg>
+                }
+            </div>
+        }
+    </div>
+
+    <p class="muted source-note">
+        Source: Federal Reserve Bank of St. Louis (FRED). Series shown: UNRATE, CPIAUCSL, FEDFUNDS, USREC.
+    </p>
+}
+
+@code {
+    private List<FredIndicator> _indicators = new();
+    private bool _loading = true;
+    private bool _hasError;
+    private string _errorMessage = "Could not load economic data — check the FRED API key / dev servers.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Fred.GetIndicatorsAsync();
+            _indicators = response?.Indicators ?? new();
+            if (_indicators.Count == 0)
+            {
+                _hasError = true;
+            }
+        }
+        catch
+        {
+            _hasError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string FormatValue(double? value) =>
+        value is null ? "—" : value.Value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string ShortDate(string? value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToString("MMM yyyy", CultureInfo.InvariantCulture)
+            : value ?? "—";
+
+    private static string FrequencyLabel(string freq) => freq switch
+    {
+        "M" => "Monthly",
+        "Q" => "Quarterly",
+        "A" => "Annual",
+        "D" => "Daily",
+        "W" => "Weekly",
+        _ => freq,
+    };
+
+    private static string SparklinePath(List<FredObservation> obs)
+    {
+        if (obs.Count == 0) return "";
+        const double w = 600, h = 80, pad = 6;
+        var min = obs.Min(o => o.Value);
+        var max = obs.Max(o => o.Value);
+        var range = Math.Abs(max - min) < 1e-9 ? 1 : max - min;
+        var step = (w - pad * 2) / Math.Max(obs.Count - 1, 1);
+        var segments = obs.Select((o, i) =>
+        {
+            var x = pad + i * step;
+            var norm = (o.Value - min) / range;
+            var y = h - pad - norm * (h - pad * 2);
+            var cmd = i == 0 ? "M" : "L";
+            return $"{cmd} {x.ToString("F1", CultureInfo.InvariantCulture)} {y.ToString("F1", CultureInfo.InvariantCulture)}";
+        });
+        return string.Join(" ", segments);
+    }
+}

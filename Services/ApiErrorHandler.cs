@@ -41,6 +41,10 @@ public sealed class ApiErrorHandler : DelegatingHandler
         if (url.Contains("field-api") || url.Contains(":4302")) return "field-intelligence (:4302)";
         if (url.Contains("weather-api") || url.Contains(":4300")) return "weather-intelligence (:4300)";
         if (url.Contains("query-api") || url.Contains(":4304")) return "query-intelligence (:4304)";
+        if (url.Contains("fred-api") || url.Contains(":4306")) return "FRED economic data";
+        if (url.Contains("datagov-api") || url.Contains(":4308")) return "Data.gov catalog";
+        if (url.Contains("api.nasa.gov")) return "NASA open APIs";
+        if (url.Contains("open-meteo.com")) return "Open-Meteo weather";
         return url;
     }
 }

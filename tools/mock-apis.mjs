@@ -517,6 +517,104 @@ function createQueryApi() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// FRED (economic data) mock — mirrors the Netlify fred-api proxy shape
+// ---------------------------------------------------------------------------
+
+function buildSeries(base, step, points) {
+  const observations = Array.from({ length: points }, (_, index) => {
+    const date = new Date(Date.UTC(2024, 5, 1));
+    date.setUTCMonth(date.getUTCMonth() + index);
+    const value = Number((base + Math.sin(index / 3) * step).toFixed(2));
+    return { date: date.toISOString().slice(0, 10), value };
+  });
+  const latest = observations.at(-1);
+  const previous = observations.at(-2);
+  return { observations, latest, previous, change: Number((latest.value - previous.value).toFixed(2)) };
+}
+
+function createFredApi() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost:4306');
+
+    if (url.pathname === '/api/indicators') {
+      const unrate = buildSeries(3.9, 0.4, 24);
+      const cpi = buildSeries(312, 6, 24);
+      const fedfunds = buildSeries(4.8, 0.5, 24);
+      const usrec = buildSeries(0, 0, 24);
+      sendJson(response, 200, {
+        indicators: [
+          { id: 'UNRATE', title: 'Unemployment Rate (mock)', units: '%', frequency: 'M', ...unrate },
+          { id: 'CPIAUCSL', title: 'Consumer Price Index (mock)', units: 'Index', frequency: 'M', ...cpi },
+          { id: 'FEDFUNDS', title: 'Federal Funds Rate (mock)', units: '%', frequency: 'M', ...fedfunds },
+          { id: 'USREC', title: 'NBER Recession Indicator (mock)', units: '0/1', frequency: 'M', ...usrec },
+        ],
+      });
+      return;
+    }
+
+    notFound(response, url.pathname);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Data.gov catalog mock — mirrors the Netlify datagov-api proxy shape
+// ---------------------------------------------------------------------------
+
+function createDatagovApi() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost:4308');
+
+    if (url.pathname === '/api/search') {
+      const q = url.searchParams.get('q') ?? 'agriculture';
+      sendJson(response, 200, {
+        query: q,
+        after: null,
+        results: [
+          {
+            title: `USDA Cropland Data Layer (mock match for "${q}")`,
+            description: 'Annual raster, geo-referenced, crop-specific land cover produced using satellite imagery and extensive agricultural ground truth.',
+            publisher: 'U.S. Department of Agriculture',
+            organization: 'Department of Agriculture',
+            keywords: ['agriculture', 'cropland', 'remote-sensing', 'land-cover'],
+            lastHarvested: '2026-04-18T11:02:00.000Z',
+            landingPage: 'https://catalog.data.gov/dataset/cropland-data-layer',
+            identifier: 'mock-cdl-001',
+            distributionTitles: ['CDL GeoTIFF', 'CDL Metadata'],
+          },
+          {
+            title: 'California Irrigated Lands Regulatory Program (mock)',
+            description: 'Monitoring data for irrigated agricultural lands across the Central Valley, including nutrient and groundwater indicators.',
+            publisher: 'California Water Boards',
+            organization: 'State of California',
+            keywords: ['irrigation', 'groundwater', 'nutrients', 'california'],
+            lastHarvested: '2026-03-30T09:15:00.000Z',
+            landingPage: 'https://catalog.data.gov/dataset',
+            identifier: 'mock-ilrp-002',
+            distributionTitles: ['CSV', 'API'],
+          },
+          {
+            title: 'Quick Stats Agricultural Database (mock)',
+            description: 'USDA NASS survey and census data covering crops, yields, prices, and economics at national, state, and county levels.',
+            publisher: 'National Agricultural Statistics Service',
+            organization: 'Department of Agriculture',
+            keywords: ['yield', 'prices', 'census', 'economics'],
+            lastHarvested: '2026-05-02T16:40:00.000Z',
+            landingPage: 'https://catalog.data.gov/dataset/quick-stats-agricultural-database',
+            identifier: 'mock-quickstats-003',
+            distributionTitles: ['Query Tool', 'Bulk Download'],
+          },
+        ],
+      });
+      return;
+    }
+
+    notFound(response, url.pathname);
+  });
+}
+
 listen(createWeatherApi(), 4300, 'weather-intelligence');
 listen(createFieldApi(), 4302, 'field-intelligence');
 listen(createQueryApi(), 4304, 'query-intelligence');
+listen(createFredApi(), 4306, 'fred-economic');
+listen(createDatagovApi(), 4308, 'datagov-catalog');
