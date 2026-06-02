@@ -25,6 +25,16 @@
   status = 200
 
 [[redirects]]
+  from = "/fred-api/*"
+  to = "/.netlify/functions/fred-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/datagov-api/*"
+  to = "/.netlify/functions/datagov-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
