@@ -51,5 +51,6 @@ builder.Services.AddScoped<DatasetsService>();
 builder.Services.AddScoped<SpaceService>();
 builder.Services.AddScoped<WeatherForecastService>();
 builder.Services.AddScoped<AgronomyService>();
+builder.Services.AddScoped<AiSearchService>();
 
 await builder.Build().RunAsync();

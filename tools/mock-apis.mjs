@@ -757,9 +757,85 @@ function createAgronomyApi() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// AI agronomy search mock — mirrors the TypeScript ai-search-api function shape.
+// Deterministic keyword classification + canned routed summary for local dev.
+// ---------------------------------------------------------------------------
+
+function classifyIntentMock(q) {
+  const text = ` ${q.toLowerCase()} `;
+  if (/irrigat|how much water|watering/.test(text)) return 'irrigation_recommendation';
+  if (/nitrate|water quality|salinity|groundwater/.test(text)) return 'water_quality';
+  if (/soil|texture|drainage/.test(text)) return 'soil_profile';
+  if (/evapotranspiration|eto| et /.test(text)) return 'evapotranspiration';
+  if (/dataset|open data|report/.test(text)) return 'dataset_discovery';
+  if (/fresno|bakersfield|salinas|summary|overview|conditions/.test(text)) return 'location_summary';
+  return 'unknown';
+}
+
+function createAiSearchApi() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost:4312');
+
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers': 'content-type',
+      });
+      response.end();
+      return;
+    }
+
+    if (url.pathname === '/api/search') {
+      const handle = (query) => {
+        if (!query || !query.trim()) {
+          sendJson(response, 400, { error: 'A "query" is required.' });
+          return;
+        }
+        const intent = classifyIntentMock(query);
+        sendJson(response, 200, {
+          query,
+          intent,
+          params: { crop: /almond/i.test(query) ? 'Almond' : undefined, county: /fresno/i.test(query) ? 'Fresno' : undefined },
+          summary:
+            intent === 'unknown'
+              ? "I couldn't tell what you're asking. Try \"irrigation for almonds near Fresno\" (mock)."
+              : `Mock ${intent.replace(/_/g, ' ')} answer for "${query}". Run netlify dev for real routed data.`,
+          sources: intent === 'unknown' ? [] : ['CIMIS', 'NRCS SSURGO', 'WUCOLS', 'Open-Meteo'],
+          confidence: intent === 'unknown' ? 0.2 : 0.7,
+        });
+      };
+
+      if (request.method === 'POST') {
+        let body = '';
+        request.on('data', (chunk) => { body += chunk; });
+        request.on('end', () => {
+          try {
+            handle(JSON.parse(body || '{}').query);
+          } catch {
+            sendJson(response, 400, { error: 'Invalid JSON body.' });
+          }
+        });
+        return;
+      }
+      handle(url.searchParams.get('q') ?? url.searchParams.get('query'));
+      return;
+    }
+
+    if (url.pathname === '/api/ai/health' || url.pathname === '/') {
+      sendJson(response, 200, { service: 'ai-agronomy-search', status: 'ok' });
+      return;
+    }
+
+    notFound(response, url.pathname);
+  });
+}
+
 listen(createWeatherApi(), 4300, 'weather-intelligence');
 listen(createFieldApi(), 4302, 'field-intelligence');
 listen(createQueryApi(), 4304, 'query-intelligence');
 listen(createFredApi(), 4306, 'fred-economic');
 listen(createDatagovApi(), 4308, 'datagov-catalog');
 listen(createAgronomyApi(), 4310, 'agronomy-gateway');
+listen(createAiSearchApi(), 4312, 'ai-agronomy-search');
