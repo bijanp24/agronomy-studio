@@ -18,6 +18,12 @@ npm-debug.log
 yarn-error.log
 /logs
 
+# Environment / Netlify
+.env
+.env.*
+!.env.example
+.netlify/
+
 # IDEs and editors
 .idea/
 .project

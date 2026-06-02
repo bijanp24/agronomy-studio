@@ -1,0 +1,91 @@
+@page "/logs"
+@using System.Globalization
+@using AgronomyStudio.Services
+@implements IDisposable
+@inject LogService Log
+
+<PageTitle>Logs · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Diagnostics Log</h1>
+    <p class="page-sub">In-app ring buffer of HTTP activity and errors (also mirrored to the browser console)</p>
+</div>
+
+<div class="studio-card controls-card">
+    <label class="control-field">
+        <span class="field-label">Level</span>
+        <select class="text-input" @bind="_filter">
+            <option value="all">All</option>
+            <option value="info">Info+</option>
+            <option value="warn">Warnings+</option>
+            <option value="error">Errors</option>
+        </select>
+    </label>
+    <button class="ghost-button" @onclick="Toggle">@(_showExport ? "Hide" : "Show") JSON</button>
+    <button class="ghost-button" @onclick="Clear">Clear</button>
+    <span class="count-note">@Filtered().Count of @_total entries</span>
+</div>
+
+@if (_showExport)
+{
+    <div class="studio-card">
+        <pre class="export-pre">@Log.ExportJson()</pre>
+    </div>
+}
+
+<div class="studio-card">
+    <div class="table-scroll">
+        <table class="studio-table">
+            <thead>
+                <tr><th>Time</th><th>Level</th><th>Source</th><th>Message</th><th>ms</th><th>Correlation</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Filtered())
+                {
+                    <tr>
+                        <td class="mono">@entry.Timestamp.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture)</td>
+                        <td><span class="lvl lvl-@entry.Level.ToString().ToLowerInvariant()">@entry.Level</span></td>
+                        <td>@entry.Source</td>
+                        <td>@entry.Message</td>
+                        <td class="mono">@(entry.DurationMs?.ToString(CultureInfo.InvariantCulture) ?? "")</td>
+                        <td class="mono muted">@entry.CorrelationId</td>
+                    </tr>
+                }
+                @if (Filtered().Count == 0)
+                {
+                    <tr><td colspan="6" class="muted">No log entries yet. Navigate the app to generate activity.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private string _filter = "all";
+    private bool _showExport;
+    private int _total;
+
+    protected override void OnInitialized() => Log.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private IReadOnlyList<LogEntry> Filtered()
+    {
+        var entries = Log.Snapshot();
+        _total = entries.Count;
+        var min = _filter switch
+        {
+            "info" => AppLogLevel.Info,
+            "warn" => AppLogLevel.Warn,
+            "error" => AppLogLevel.Error,
+            _ => AppLogLevel.Debug,
+        };
+        return entries.Where(e => e.Level >= min).ToList();
+    }
+
+    private void Toggle() => _showExport = !_showExport;
+
+    private void Clear() => Log.Clear();
+
+    public void Dispose() => Log.Changed -= OnChanged;
+}

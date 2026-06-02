@@ -1,0 +1,125 @@
+@page "/ask"
+@using System.Globalization
+@using AgronomyStudio.Models
+@inject AiSearchService Search
+
+<PageTitle>Ask · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Ask Agronomy</h1>
+    <p class="page-sub">Plain-English questions routed to the agronomy gateway (CIMIS, soil, crop, forecast, water quality, datasets)</p>
+</div>
+
+<div class="studio-card ask-card">
+    <form @onsubmit="Submit" @onsubmit:preventDefault>
+        <div class="ask-row">
+            <input class="text-input ask-input" @bind="_query" @bind:event="oninput"
+                   placeholder="e.g. how much water for almonds near Fresno?" aria-label="Ask a question" />
+            <button class="primary-button" type="submit" disabled="@_loading">Ask</button>
+        </div>
+    </form>
+    <div class="example-chips">
+        @foreach (var example in Examples)
+        {
+            <button type="button" class="chip" @onclick="() => UseExample(example)">@example</button>
+        }
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Thinking"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        The search service could not answer that. Try rephrasing or include a location.
+    </div>
+}
+
+@if (!_loading && _result is { } result)
+{
+    <div class="studio-card result-card">
+        <div class="result-head">
+            <span class="intent-chip">@FormatIntent(result.Intent)</span>
+            <span class="confidence-note">confidence @((result.Confidence * 100).ToString("0", CultureInfo.InvariantCulture))%</span>
+        </div>
+        <p class="result-summary">@result.Summary</p>
+
+        @if (result.Params is { } p && (p.County is not null || p.Crop is not null || p.Latitude is not null))
+        {
+            <div class="param-row">
+                @if (p.Crop is not null) { <span class="param">crop: @p.Crop</span> }
+                @if (p.County is not null) { <span class="param">county: @p.County</span> }
+                @if (p.Latitude is not null && p.Longitude is not null)
+                {
+                    <span class="param">@p.Latitude.Value.ToString("0.###", CultureInfo.InvariantCulture), @p.Longitude.Value.ToString("0.###", CultureInfo.InvariantCulture)</span>
+                }
+            </div>
+        }
+
+        @if (result.Sources.Count > 0)
+        {
+            <div class="sources">
+                <span class="sources-label">Sources:</span>
+                @foreach (var source in result.Sources)
+                {
+                    <span class="source-pill">@source</span>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private static readonly string[] Examples =
+    {
+        "how much water for almonds near Fresno?",
+        "soil texture at 36.7, -119.8",
+        "nitrate near Bakersfield",
+        "find datasets about groundwater",
+    };
+
+    private string _query = string.Empty;
+    private AgronomySearchResult? _result;
+    private bool _loading;
+    private bool _hasError;
+
+    private async Task UseExample(string example)
+    {
+        _query = example;
+        await Submit();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            return;
+        }
+
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            _result = await Search.SearchAsync(_query.Trim());
+            if (_result is null)
+            {
+                _hasError = true;
+            }
+        }
+        catch
+        {
+            _hasError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string FormatIntent(string intent) =>
+        string.Join(' ', intent.Split('_').Select(w => w.Length == 0 ? w : char.ToUpperInvariant(w[0]) + w[1..]));
+}

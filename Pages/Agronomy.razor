@@ -1,0 +1,236 @@
+@page "/agronomy"
+@using System.Globalization
+@using AgronomyStudio.Models
+@inject AgronomyService Gateway
+
+<PageTitle>Agronomy · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Agronomy Intelligence</h1>
+    <p class="page-sub">Location-based irrigation guidance from reference ET, soil water capacity, and crop coefficients</p>
+</div>
+
+<div class="studio-card controls-card">
+    <label class="control-field">
+        <span class="field-label">Location</span>
+        <select class="text-input" @onchange="OnLocationChanged">
+            @foreach (var loc in Locations)
+            {
+                <option value="@loc.Name" selected="@(loc.Name == _selected.Name)">@loc.Name</option>
+            }
+        </select>
+    </label>
+    <label class="control-field">
+        <span class="field-label">Crop</span>
+        <input class="text-input" @bind="_crop" @bind:event="oninput" placeholder="e.g. almond" />
+    </label>
+    <button class="primary-button" @onclick="Load" disabled="@_loading">Analyze</button>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        Could not load agronomy data for @_selected.Name.
+    </div>
+}
+
+@if (!_loading && !_hasError && _summary is not null)
+{
+    @if (_summary.Irrigation is { } irr)
+    {
+        <div class="kpi-row">
+            <div class="studio-card kpi-card">
+                <div class="kpi-value">@irr.Eto.ToString("0.##", CultureInfo.InvariantCulture)</div>
+                <div class="kpi-label">Reference ET₀ (in/day)</div>
+            </div>
+            <div class="studio-card kpi-card">
+                <div class="kpi-value">@irr.CropEt.ToString("0.##", CultureInfo.InvariantCulture)</div>
+                <div class="kpi-label">Crop ET (in/day)</div>
+            </div>
+            <div class="studio-card kpi-card">
+                <div class="kpi-value">@irr.GrossIrrigationIn.ToString("0.##", CultureInfo.InvariantCulture)</div>
+                <div class="kpi-label">Gross Irrigation (in)</div>
+            </div>
+            <div class="studio-card kpi-card">
+                <div class="kpi-value">@irr.IntervalDays</div>
+                <div class="kpi-label">Interval (days)</div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Irrigation Recommendation</h2>
+        <div class="studio-card">
+            <div class="rec-head">
+                <strong>@irr.CropName</strong>
+                <span class="confidence-chip confidence-@irr.Confidence.ToLowerInvariant()">@irr.Confidence confidence</span>
+                @if (irr.HeatRisk)
+                {
+                    <span class="risk-chip"><span class="bi bi-thermometer-sun" aria-hidden="true"></span> heat risk</span>
+                }
+            </div>
+            <dl class="detail-grid">
+                <div><dt>Crop coefficient (Kc)</dt><dd>@irr.Kc.ToString("0.##", CultureInfo.InvariantCulture)</dd></div>
+                <div><dt>Net irrigation</dt><dd>@irr.NetIrrigationIn.ToString("0.##", CultureInfo.InvariantCulture) in</dd></div>
+                <div><dt>Readily available water</dt><dd>@irr.ReadilyAvailableWaterIn.ToString("0.##", CultureInfo.InvariantCulture) in</dd></div>
+                <div><dt>Forecast rain offset</dt><dd>@irr.ForecastRainIn.ToString("0.##", CultureInfo.InvariantCulture) in</dd></div>
+                <div><dt>System efficiency</dt><dd>@(irr.SystemEfficiency * 100)%</dd></div>
+            </dl>
+            @if (irr.Notes.Count > 0)
+            {
+                <ul class="note-list">
+                    @foreach (var note in irr.Notes)
+                    {
+                        <li>@note</li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+
+    <div class="split-row">
+        @if (_summary.Soil is { } soil)
+        {
+            <div class="studio-card half">
+                <h2 class="section-title">Soil Profile</h2>
+                <dl class="detail-grid">
+                    <div><dt>Map unit</dt><dd>@(soil.MapUnitName ?? "—")</dd></div>
+                    <div><dt>Texture</dt><dd>@(soil.Texture ?? "—")</dd></div>
+                    <div><dt>Drainage</dt><dd>@(soil.DrainageClass ?? "—")</dd></div>
+                    <div><dt>Hydrologic group</dt><dd>@(soil.HydrologicGroup ?? "—")</dd></div>
+                    <div><dt>Available water capacity</dt><dd>@soil.AvailableWaterCapacity.ToString("0.###", CultureInfo.InvariantCulture) in/in</dd></div>
+                    <div><dt>Root-zone depth</dt><dd>@soil.RootZoneDepthIn.ToString("0.#", CultureInfo.InvariantCulture) in</dd></div>
+                </dl>
+                <p class="muted source-note">Source: @soil.Source</p>
+            </div>
+        }
+
+        @if (_risk is { } risk)
+        {
+            <div class="studio-card half">
+                <h2 class="section-title">Risk Summary</h2>
+                <div class="risk-flags">
+                    <span class="flag @(risk.HeatRisk ? "flag-on" : "flag-off")">Heat</span>
+                    <span class="flag @(risk.DroughtStress ? "flag-on" : "flag-off")">Drought stress</span>
+                    <span class="flag @(risk.WaterQualityConcern ? "flag-on" : "flag-off")">Water quality</span>
+                </div>
+                <ul class="note-list">
+                    @foreach (var note in risk.Notes)
+                    {
+                        <li>@note</li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+
+    @if (_summary.Forecast is { Count: > 0 } forecast)
+    {
+        <h2 class="section-title">Forecast ET₀</h2>
+        <div class="studio-card">
+            <div class="table-scroll">
+                <table class="studio-table">
+                    <thead>
+                        <tr><th>Date</th><th>ET₀ (in)</th><th>Rain (in)</th><th>High / Low</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var day in forecast)
+                        {
+                            <tr>
+                                <td>@LongDate(day.Date)</td>
+                                <td>@day.Eto.ToString("0.##", CultureInfo.InvariantCulture)</td>
+                                <td>@((day.Precipitation ?? 0).ToString("0.##", CultureInfo.InvariantCulture))</td>
+                                <td>
+                                    @(day.MaxTempF.HasValue ? day.MaxTempF.Value.ToString("0", CultureInfo.InvariantCulture) + "°" : "—")
+                                    <span class="muted"> / @(day.MinTempF.HasValue ? day.MinTempF.Value.ToString("0", CultureInfo.InvariantCulture) + "°" : "—")</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (_summary.Warnings is { Count: > 0 } warnings)
+    {
+        <div class="studio-card warn-card">
+            <strong>Partial data</strong>
+            <ul class="note-list">
+                @foreach (var (service, message) in warnings)
+                {
+                    <li><code>@service</code>: @message</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <p class="muted source-note">
+        @_selected.Name (@_selected.Latitude.ToString(CultureInfo.InvariantCulture), @_selected.Longitude.ToString(CultureInfo.InvariantCulture))
+        · ET₀ source: @(_summary.Evapotranspiration?.Source ?? "—")
+    </p>
+}
+
+@code {
+    private readonly record struct Location(string Name, double Latitude, double Longitude);
+
+    private static readonly Location[] Locations =
+    {
+        new("Fresno, CA", 36.7378, -119.7871),
+        new("Bakersfield, CA", 35.3733, -119.0187),
+        new("Salinas, CA", 36.6777, -121.6555),
+        new("Sacramento, CA", 38.5816, -121.4944),
+        new("Modesto, CA", 37.6391, -120.9969),
+    };
+
+    private Location _selected = Locations[0];
+    private string _crop = "almond";
+    private AgronomyLocationSummary? _summary;
+    private RiskSummary? _risk;
+    private bool _loading = true;
+    private bool _hasError;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            var summaryTask = Gateway.GetLocationSummaryAsync(_selected.Latitude, _selected.Longitude, _crop);
+            var riskTask = Gateway.GetRiskSummaryAsync(_selected.Latitude, _selected.Longitude);
+            await Task.WhenAll(summaryTask, riskTask);
+            _summary = summaryTask.Result;
+            _risk = riskTask.Result;
+            if (_summary is null)
+            {
+                _hasError = true;
+            }
+        }
+        catch
+        {
+            _hasError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnLocationChanged(ChangeEventArgs e)
+    {
+        var name = e.Value?.ToString();
+        _selected = Locations.FirstOrDefault(l => l.Name == name, Locations[0]);
+        await Load();
+    }
+
+    private static string LongDate(string value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToString("ddd, MMM d", CultureInfo.InvariantCulture)
+            : value;
+}

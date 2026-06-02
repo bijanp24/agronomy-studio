@@ -20,8 +20,21 @@ API base URLs are configured in `wwwroot/appsettings.json` (production) and `www
 ## Development Commands
 
 - `dotnet run` runs the Blazor dev server.
-- `node tools/mock-apis.mjs` runs the local mock backends.
+- `node tools/mock-apis.mjs` runs the local mock backends (ports 4300–4312).
+- `netlify dev` runs the real TypeScript functions and proxies the app (needs `.env`).
 - `dotnet publish -c Release -o release` produces the deployable `release/wwwroot`.
+- `npm install` installs the function toolchain; `npm test` / `npm run typecheck` run function tests and type-check.
+
+## California Agronomy Microservices Platform
+
+TypeScript Netlify functions implement a microservices + gateway platform.
+Domain modules live in `netlify/lib/` (`cimis`, `fret`, `soil`, `crop`, `cnra`,
+`waterquality`, `gateway`, `ai-search`) with thin HTTP wrappers in
+`netlify/functions/`. The frontend calls only the gateway (`/agronomy-api/*`) and
+the mock AI search (`/ai-search-api`). Shared helpers (`http.ts` structured
+logging, `models.ts`, `units.ts`, `geo.ts`, `irrigation.ts`) are reused across
+services. The AI search is a deterministic mock (LLM calls stubbed). Required env
+vars are in `.env.example`; see `docs/api-source-inventory.md` and related docs.
 
 ## C# / .NET Standards
 

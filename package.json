@@ -1,0 +1,20 @@
+{
+  "name": "agronomy-studio-functions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript Netlify functions for the California Agronomy Microservices Platform",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:live": "AGRONOMY_LIVE_TESTS=1 vitest run",
+    "typecheck": "tsc --noEmit",
+    "ingest:wucols": "node tools/ingest-wucols.mjs"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^2.8.2",
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

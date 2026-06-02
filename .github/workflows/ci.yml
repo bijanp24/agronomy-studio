@@ -16,6 +16,29 @@ permissions:
   contents: read
 
 jobs:
+  functions:
+    name: Functions (TypeScript)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
   verify:
     name: Build
     runs-on: ubuntu-latest

@@ -35,6 +35,46 @@
   status = 200
 
 [[redirects]]
+  from = "/cimis-api/*"
+  to = "/.netlify/functions/cimis-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/soil-api/*"
+  to = "/.netlify/functions/soil-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/crop-api/*"
+  to = "/.netlify/functions/crop-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/fret-api/*"
+  to = "/.netlify/functions/fret-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/cnra-api/*"
+  to = "/.netlify/functions/cnra-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/waterquality-api/*"
+  to = "/.netlify/functions/waterquality-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/agronomy-api/*"
+  to = "/.netlify/functions/agronomy-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/ai-search-api/*"
+  to = "/.netlify/functions/ai-search-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

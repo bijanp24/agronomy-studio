@@ -14,9 +14,14 @@ var fredApi = builder.Configuration["Api:FredApi"] ?? "/fred-api";
 var datagovApi = builder.Configuration["Api:DatagovApi"] ?? "/datagov-api";
 var nasaApi = builder.Configuration["Api:NasaApi"] ?? "https://api.nasa.gov";
 var openMeteoApi = builder.Configuration["Api:OpenMeteoApi"] ?? "https://api.open-meteo.com";
+var agronomyApi = builder.Configuration["Api:AgronomyApi"] ?? "/agronomy-api";
+var aiSearchApi = builder.Configuration["Api:AiSearchApi"] ?? "/ai-search-api";
 
+builder.Services.AddSingleton<LogService>();
 builder.Services.AddScoped<NotificationService>();
-builder.Services.AddTransient(sp => new ApiErrorHandler(sp.GetRequiredService<NotificationService>()));
+builder.Services.AddTransient(sp => new ApiErrorHandler(
+    sp.GetRequiredService<NotificationService>(),
+    sp.GetRequiredService<LogService>()));
 
 string Absolute(string value)
 {
@@ -37,6 +42,8 @@ AddApiClient(ApiClients.Economy, fredApi);
 AddApiClient(ApiClients.Datasets, datagovApi);
 AddApiClient(ApiClients.Space, nasaApi);
 AddApiClient(ApiClients.Forecast, openMeteoApi);
+AddApiClient(ApiClients.Agronomy, agronomyApi);
+AddApiClient(ApiClients.AiSearch, aiSearchApi);
 
 builder.Services.AddScoped<FieldIntelligenceService>();
 builder.Services.AddScoped<WeatherService>();
@@ -46,5 +53,7 @@ builder.Services.AddScoped<EconomyService>();
 builder.Services.AddScoped<DatasetsService>();
 builder.Services.AddScoped<SpaceService>();
 builder.Services.AddScoped<WeatherForecastService>();
+builder.Services.AddScoped<AgronomyService>();
+builder.Services.AddScoped<AiSearchService>();
 
 await builder.Build().RunAsync();

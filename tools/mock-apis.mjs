@@ -613,8 +613,229 @@ function createDatagovApi() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Agronomy gateway mock — mirrors the TypeScript agronomy-api function shape.
+// Canned, deterministic data so the Blazor Agronomy/Ask pages work under the
+// `dotnet run` + node-mock workflow without the Netlify CLI. Production uses the
+// real TypeScript functions (real CIMIS/NRCS/WUCOLS/etc.) via netlify redirects.
+// ---------------------------------------------------------------------------
+
+function readLatLon(url) {
+  const lat = Number(url.searchParams.get('lat') ?? url.searchParams.get('latitude'));
+  const lon = Number(url.searchParams.get('lon') ?? url.searchParams.get('longitude'));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { latitude: lat, longitude: lon };
+}
+
+function cannedEto(point) {
+  const eto = Number((0.18 + Math.abs(Math.sin(point.latitude)) * 0.12).toFixed(3));
+  return {
+    date: new Date().toISOString().slice(0, 10),
+    stationId: '80',
+    stationName: 'Fresno State (mock)',
+    location: point,
+    eto,
+    airTempF: 88,
+    solarRadiation: 612,
+    precipitation: 0,
+    source: 'CIMIS (mock)',
+  };
+}
+
+function cannedSoil(point) {
+  return {
+    location: point,
+    mapUnitName: 'Hanford sandy loam (mock)',
+    componentName: 'Hanford',
+    texture: 'sandy loam',
+    drainageClass: 'well drained',
+    hydrologicGroup: 'B',
+    availableWaterCapacity: 0.14,
+    rootZoneDepthIn: 36,
+    source: 'NRCS SSURGO (mock)',
+  };
+}
+
+function cannedForecast() {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(Date.now() + index * 86400000);
+    return {
+      date: date.toISOString().slice(0, 10),
+      eto: Number((0.2 + Math.sin(index / 2) * 0.05).toFixed(3)),
+      precipitation: index === 4 ? 0.12 : 0,
+      maxTempF: 92 + index,
+      minTempF: 60 + index,
+      source: 'Open-Meteo (mock)',
+    };
+  });
+}
+
+function cannedIrrigation(crop) {
+  const eto = 0.26;
+  const kc = 0.95;
+  const cropEt = Number((eto * kc).toFixed(3));
+  const raw = Number((0.14 * 36 * 0.5).toFixed(2));
+  return {
+    cropName: crop ?? 'Almond (mock)',
+    eto,
+    kc,
+    cropEt,
+    netIrrigationIn: raw,
+    grossIrrigationIn: Number((raw / 0.85).toFixed(2)),
+    intervalDays: Math.max(1, Math.round(raw / cropEt)),
+    readilyAvailableWaterIn: raw,
+    forecastRainIn: 0.12,
+    systemEfficiency: 0.85,
+    heatRisk: false,
+    confidence: 'medium',
+    notes: ['Mock recommendation from the local dev gateway.'],
+  };
+}
+
+function createAgronomyApi() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost:4310');
+    const point = readLatLon(url);
+
+    if (url.pathname === '/api/agronomy/location-summary') {
+      if (!point) return sendJson(response, 400, { error: 'lat and lon are required' });
+      const crop = url.searchParams.get('crop') ?? undefined;
+      sendJson(response, 200, {
+        location: point,
+        county: 'Fresno',
+        resolvedAt: new Date().toISOString(),
+        evapotranspiration: cannedEto(point),
+        forecast: cannedForecast(),
+        soil: cannedSoil(point),
+        waterQuality: [],
+        datasets: [],
+        irrigation: cannedIrrigation(crop),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/agronomy/irrigation-recommendation') {
+      if (!point) return sendJson(response, 400, { error: 'lat and lon are required' });
+      sendJson(response, 200, cannedIrrigation(url.searchParams.get('crop') ?? undefined));
+      return;
+    }
+
+    if (url.pathname === '/api/agronomy/soil-water-balance') {
+      if (!point) return sendJson(response, 400, { error: 'lat and lon are required' });
+      sendJson(response, 200, {
+        location: point,
+        availableWaterCapacity: 0.14,
+        rootZoneDepthIn: 36,
+        totalAvailableWaterIn: 5.04,
+        readilyAvailableWaterIn: 2.52,
+        recentEtIn: 0.26,
+        forecastEtIn: 1.4,
+        forecastRainIn: 0.12,
+        projectedDeficitIn: 1.54,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/agronomy/risk-summary') {
+      if (!point) return sendJson(response, 400, { error: 'lat and lon are required' });
+      sendJson(response, 200, {
+        location: point,
+        heatRisk: true,
+        droughtStress: true,
+        waterQualityConcern: false,
+        notes: ['High temperatures forecast; elevated crop water demand.'],
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/agronomy/health' || url.pathname === '/') {
+      sendJson(response, 200, { service: 'agronomy-gateway', status: 'ok' });
+      return;
+    }
+
+    notFound(response, url.pathname);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// AI agronomy search mock — mirrors the TypeScript ai-search-api function shape.
+// Deterministic keyword classification + canned routed summary for local dev.
+// ---------------------------------------------------------------------------
+
+function classifyIntentMock(q) {
+  const text = ` ${q.toLowerCase()} `;
+  if (/irrigat|how much water|watering/.test(text)) return 'irrigation_recommendation';
+  if (/nitrate|water quality|salinity|groundwater/.test(text)) return 'water_quality';
+  if (/soil|texture|drainage/.test(text)) return 'soil_profile';
+  if (/evapotranspiration|eto| et /.test(text)) return 'evapotranspiration';
+  if (/dataset|open data|report/.test(text)) return 'dataset_discovery';
+  if (/fresno|bakersfield|salinas|summary|overview|conditions/.test(text)) return 'location_summary';
+  return 'unknown';
+}
+
+function createAiSearchApi() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost:4312');
+
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers': 'content-type',
+      });
+      response.end();
+      return;
+    }
+
+    if (url.pathname === '/api/search') {
+      const handle = (query) => {
+        if (!query || !query.trim()) {
+          sendJson(response, 400, { error: 'A "query" is required.' });
+          return;
+        }
+        const intent = classifyIntentMock(query);
+        sendJson(response, 200, {
+          query,
+          intent,
+          params: { crop: /almond/i.test(query) ? 'Almond' : undefined, county: /fresno/i.test(query) ? 'Fresno' : undefined },
+          summary:
+            intent === 'unknown'
+              ? "I couldn't tell what you're asking. Try \"irrigation for almonds near Fresno\" (mock)."
+              : `Mock ${intent.replace(/_/g, ' ')} answer for "${query}". Run netlify dev for real routed data.`,
+          sources: intent === 'unknown' ? [] : ['CIMIS', 'NRCS SSURGO', 'WUCOLS', 'Open-Meteo'],
+          confidence: intent === 'unknown' ? 0.2 : 0.7,
+        });
+      };
+
+      if (request.method === 'POST') {
+        let body = '';
+        request.on('data', (chunk) => { body += chunk; });
+        request.on('end', () => {
+          try {
+            handle(JSON.parse(body || '{}').query);
+          } catch {
+            sendJson(response, 400, { error: 'Invalid JSON body.' });
+          }
+        });
+        return;
+      }
+      handle(url.searchParams.get('q') ?? url.searchParams.get('query'));
+      return;
+    }
+
+    if (url.pathname === '/api/ai/health' || url.pathname === '/') {
+      sendJson(response, 200, { service: 'ai-agronomy-search', status: 'ok' });
+      return;
+    }
+
+    notFound(response, url.pathname);
+  });
+}
+
 listen(createWeatherApi(), 4300, 'weather-intelligence');
 listen(createFieldApi(), 4302, 'field-intelligence');
 listen(createQueryApi(), 4304, 'query-intelligence');
 listen(createFredApi(), 4306, 'fred-economic');
 listen(createDatagovApi(), 4308, 'datagov-catalog');
+listen(createAgronomyApi(), 4310, 'agronomy-gateway');
+listen(createAiSearchApi(), 4312, 'ai-agronomy-search');

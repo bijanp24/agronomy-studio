@@ -13,6 +13,16 @@ Three backend services. In production, requests are proxied by Netlify redirects
 
 Run the app with `dotnet run`; start the mock APIs with `node tools/mock-apis.mjs`. API base URLs are configured in `wwwroot/appsettings.json` (production, relative paths) and `wwwroot/appsettings.Development.json` (local ports).
 
+### California Agronomy Microservices Platform
+
+TypeScript Netlify functions implement a microservices + gateway platform: domain
+modules in `netlify/lib/` (`cimis`, `fret`, `soil`, `crop`, `cnra`, `waterquality`,
+`gateway`, `ai-search`) with thin wrappers in `netlify/functions/`. The frontend
+calls only the gateway (`/agronomy-api/*`) and the mock AI search (`/ai-search-api`).
+Use `npm install` + `npm test`/`npm run typecheck` for the functions, and
+`netlify dev` to run them locally against real APIs (env vars in `.env.example`).
+The AI search is a deterministic mock — LLM calls are stubbed. Docs live in `docs/`.
+
 ## Git Commit Guidelines
 
 ### 1. Atomic Commits
