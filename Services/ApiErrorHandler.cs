@@ -45,6 +45,8 @@ public sealed class ApiErrorHandler : DelegatingHandler
         if (url.Contains("datagov-api") || url.Contains(":4308")) return "Data.gov catalog";
         if (url.Contains("api.nasa.gov")) return "NASA open APIs";
         if (url.Contains("open-meteo.com")) return "Open-Meteo weather";
+        if (url.Contains("agronomy-api") || url.Contains(":4310")) return "agronomy gateway (:4310)";
+        if (url.Contains("ai-search-api") || url.Contains(":4312")) return "agronomy AI search (:4312)";
         return url;
     }
 }
