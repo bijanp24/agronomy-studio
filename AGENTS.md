@@ -2,55 +2,50 @@
 
 ## Project
 
-Agronomy Studio is an Angular 21 standalone-component SPA for California field intelligence.
+Agronomy Studio is a Blazor WebAssembly (.NET 8) SPA for California field intelligence.
 
-Local development proxies two backend services:
+Three backend services. In production, Netlify redirects proxy them to `netlify/functions/*.mjs`. For local development the app points directly at the mock servers in `tools/mock-apis.mjs`:
 
 - `/field-api` -> `http://localhost:4302` (`field-intelligence-app`)
 - `/weather-api` -> `http://localhost:4300` (`weather-intelligence-app`)
+- `/query-api` -> `http://localhost:4304` (`query-intelligence-app`)
+
+API base URLs are configured in `wwwroot/appsettings.json` (production) and `wwwroot/appsettings.Development.json` (local ports).
 
 ## Reference Instructions
 
-- Follow [Angular.md](./Angular.md) for Angular, TypeScript, and accessibility standards.
+- Follow [Blazor.md](./Blazor.md) for C#, .NET, Blazor, and accessibility standards.
 - Keep this file aligned with [CLAUDE.md](./CLAUDE.md) when repository workflow guidance changes.
 
 ## Development Commands
 
-- `npm start` runs the Angular dev server.
-- `npm run build` builds the app.
-- `npm test` runs tests.
+- `dotnet run` runs the Blazor dev server.
+- `node tools/mock-apis.mjs` runs the local mock backends.
+- `dotnet publish -c Release -o release` produces the deployable `release/wwwroot`.
 
-## TypeScript Standards
+## C# / .NET Standards
 
-- Use strict type checking.
-- Prefer type inference when the type is obvious.
-- Avoid `any`; use `unknown` when the type is uncertain.
+- Target .NET 8 with `Nullable` and `ImplicitUsings` enabled.
+- Prefer immutable `record` types for data models.
+- Avoid `dynamic`; deserialize JSON into typed models with `System.Text.Json` web defaults.
 
-## Angular Standards
+## Blazor Standards
 
-- Use standalone components. Do not add `standalone: true`; it is the default in Angular v20+.
-- Use signals for local component state and `computed()` for derived state.
-- Use `set` or `update` for signal changes; do not use `mutate`.
-- Implement lazy loading for feature routes.
-- Use `inject()` instead of constructor injection.
-- Use `providedIn: 'root'` for singleton services.
-- Use `NgOptimizedImage` for static images, except inline base64 images.
-- Put host bindings/listeners in the `host` object instead of using `@HostBinding` or `@HostListener`.
+- Use routable components with `@page` directives.
+- Keep component state in fields and derive values with computed C# properties.
+- Use `IHttpClientFactory` named clients per backend; read base URLs from `appsettings`.
+- Use `inject()`-style `@inject` and register singleton-style services as scoped in `Program.cs`.
+- Use `IJSRuntime` for JS interop (Leaflet, `localStorage`); keep interop modules small.
+- Implement `IDisposable`/`IAsyncDisposable` to clean up timers, handlers, and JS resources.
 
 ## Components And Templates
 
 - Keep components small and focused on a single responsibility.
-- Set `changeDetection: ChangeDetectionStrategy.OnPush`.
-- Use `input()` and `output()` instead of decorator-based inputs and outputs.
-- Prefer inline templates for small components.
-- Prefer Reactive Forms over Template-driven Forms.
-- Use native control flow (`@if`, `@for`, `@switch`) instead of structural directives.
-- Use the async pipe for observables.
-- Keep templates simple and avoid complex logic.
-- Do not assume globals such as `new Date()` are available in templates.
-- Do not use `ngClass`; use class bindings.
-- Do not use `ngStyle`; use style bindings.
-- When using external templates or styles, use paths relative to the component TypeScript file.
+- Prefer scoped CSS (`Component.razor.css`) over global styles.
+- Use native control flow (`@if`, `@foreach`, `@switch`).
+- Keep templates simple and push logic into the `@code` block.
+- Call `StateHasChanged` via `InvokeAsync` when updating UI from background tasks.
+- Format numbers and dates with `CultureInfo.InvariantCulture` where output must be stable.
 
 ## Accessibility
 
