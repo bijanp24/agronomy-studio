@@ -1,4 +1,5 @@
 import { getCurrentEto as getCimisEto } from './cimis';
+import { findCoefficient } from './crop';
 import type { Logger } from './http';
 import { computeIrrigation } from './irrigation';
 import { getSoilProfile } from './soil';
@@ -91,6 +92,7 @@ const defaultProviders: GatewayProviders = {
   ...placeholderProviders,
   getEvapotranspiration: (point, logger) => getCimisEto(point, { logger }),
   getSoil: (point, logger) => getSoilProfile(point, { logger }),
+  getCropCoefficient: async (cropId, cropName) => findCoefficient(cropId, cropName),
 };
 
 let activeProviders: GatewayProviders = defaultProviders;
