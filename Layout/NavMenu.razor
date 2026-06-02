@@ -1,0 +1,60 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <span class="bi bi-flower1" aria-hidden="true"></span>
+            <span class="brand-text">
+                <span class="brand-title">Field Intelligence OS</span>
+                <span class="brand-sub">California Agronomy Platform</span>
+            </span>
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dashboard">
+                <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="fields">
+                <span class="bi bi-grid-3x3-gap" aria-hidden="true"></span> Fields
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="entropy">
+                <span class="bi bi-cloud-haze2" aria-hidden="true"></span> Entropy
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="gis">
+                <span class="bi bi-map" aria-hidden="true"></span> GIS Blocks
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="query">
+                <span class="bi bi-chat-square-text" aria-hidden="true"></span> Query
+            </NavLink>
+        </div>
+    </nav>
+
+    <div class="sidenav-footer px-3">
+        <span class="port-badge">Field :4302</span>
+        <span class="port-badge">Weather :4300</span>
+        <span class="port-badge">Query :4304</span>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => StateHasChanged();
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}
