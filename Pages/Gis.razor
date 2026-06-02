@@ -1,0 +1,220 @@
+@page "/gis"
+@using System.Globalization
+@implements IAsyncDisposable
+@inject FieldIntelligenceService FieldService
+@inject IJSRuntime JS
+
+<PageTitle>GIS Blocks · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>GIS Block Explorer</h1>
+    <p class="page-sub">San Joaquin Valley — @_features.Count blocks at 2 km resolution</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        Could not load GIS blocks — check the dev servers.
+    </div>
+}
+
+@if (!_loading && !_hasError)
+{
+    <div class="studio-card filter-card">
+        <label class="filter-field">
+            <span class="field-label">Irrigation Zone</span>
+            <select class="text-input" value="@_selectedZone" @onchange="OnZoneChanged">
+                <option value="">All zones</option>
+                @foreach (var z in _zones)
+                {
+                    <option value="@z">@z</option>
+                }
+            </select>
+        </label>
+
+        <label class="filter-field">
+            <span class="field-label">Crop Type</span>
+            <select class="text-input" value="@_selectedCrop" @onchange="OnCropChanged">
+                <option value="">All crops</option>
+                @foreach (var c in _crops)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </label>
+
+        <span class="result-count">
+            Showing @Filtered.Count of @FilteredCount
+            @if (FilteredCount > 150)
+            {
+                <span class="cap-note">(capped at 150)</span>
+            }
+        </span>
+    </div>
+
+    <div class="studio-card map-card">
+        <div id="gis-map" class="map-container"></div>
+        <div class="map-legend">
+            @foreach (var entry in Legend)
+            {
+                <span class="legend-item">
+                    <span class="legend-dot" style="background:@entry.Color"></span>@entry.Label
+                </span>
+            }
+        </div>
+    </div>
+
+    <div class="studio-card table-card">
+        <div class="table-scroll">
+            <table class="studio-table blocks-table">
+                <thead>
+                    <tr>
+                        <th>Block ID</th>
+                        <th>Crop</th>
+                        <th>Soil</th>
+                        <th>Zone</th>
+                        <th>Elevation</th>
+                        <th>Center</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Filtered)
+                    {
+                        <tr>
+                            <td class="mono">@f.Id</td>
+                            <td class="capitalize">@f.Properties.CropType</td>
+                            <td>@f.Properties.SoilType</td>
+                            <td><span class="zone-chip">@f.Properties.IrrigationZone</span></td>
+                            <td>@f.Properties.ElevationM m</td>
+                            <td class="mono coords">@Coord(f.Properties.CenterLat), @Coord(f.Properties.CenterLon)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly Dictionary<string, string> CropPalette = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["almond"] = "#d97706",
+        ["grape"] = "#7c3aed",
+        ["tomato"] = "#dc2626",
+        ["cotton"] = "#6b7280",
+        ["wheat"] = "#ca8a04",
+        ["corn"] = "#16a34a",
+        ["pistachio"] = "#65a30d",
+        ["walnut"] = "#92400e",
+        ["citrus"] = "#ea580c",
+    };
+
+    private static readonly (string Label, string Color)[] Legend =
+    {
+        ("Almond", "#d97706"), ("Grape", "#7c3aed"), ("Tomato", "#dc2626"),
+        ("Cotton", "#6b7280"), ("Wheat", "#ca8a04"), ("Corn", "#16a34a"),
+        ("Other", "#3b82f6"),
+    };
+
+    private List<GeoJsonFeature> _features = new();
+    private List<string> _zones = new();
+    private List<string> _crops = new();
+    private string _selectedZone = "";
+    private string _selectedCrop = "";
+    private bool _loading = true;
+    private bool _hasError;
+    private bool _mapReady;
+
+    private List<GeoJsonFeature> FilteredAll => _features
+        .Where(f => (string.IsNullOrEmpty(_selectedZone) || f.Properties.IrrigationZone == _selectedZone)
+                 && (string.IsNullOrEmpty(_selectedCrop) || f.Properties.CropType == _selectedCrop))
+        .ToList();
+
+    private List<GeoJsonFeature> Filtered => FilteredAll.Take(150).ToList();
+
+    private int FilteredCount => FilteredAll.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var collection = await FieldService.GetGisBlocksAsync();
+            _features = collection?.Features ?? new();
+            _zones = _features.Select(f => f.Properties.IrrigationZone).Distinct().OrderBy(z => z).ToList();
+            _crops = _features.Select(f => f.Properties.CropType).Distinct().OrderBy(c => c).ToList();
+        }
+        catch
+        {
+            _hasError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_mapReady && !_loading && !_hasError)
+        {
+            await JS.InvokeVoidAsync("agronomyMap.init", "gis-map", 36.7, -119.8, 9);
+            _mapReady = true;
+            await RenderMap();
+        }
+    }
+
+    private async Task RenderMap()
+    {
+        if (!_mapReady) return;
+
+        var shapes = FilteredAll.Select(f => new
+        {
+            color = CropColor(f.Properties.CropType),
+            coords = f.Geometry.Coordinates.Count > 0
+                ? f.Geometry.Coordinates[0].Select(pair => new[] { pair[1], pair[0] }).ToArray()
+                : Array.Empty<double[]>(),
+            popupHtml = PopupHtml(f),
+        }).ToArray();
+
+        await JS.InvokeVoidAsync("agronomyMap.render", shapes);
+    }
+
+    private async Task OnZoneChanged(ChangeEventArgs e)
+    {
+        _selectedZone = e.Value?.ToString() ?? "";
+        await RenderMap();
+    }
+
+    private async Task OnCropChanged(ChangeEventArgs e)
+    {
+        _selectedCrop = e.Value?.ToString() ?? "";
+        await RenderMap();
+    }
+
+    private static string CropColor(string crop) =>
+        CropPalette.TryGetValue(crop, out var color) ? color : "#3b82f6";
+
+    private static string PopupHtml(GeoJsonFeature f) =>
+        $"<strong>{f.Id}</strong><br>Crop: {f.Properties.CropType}<br>Soil: {f.Properties.SoilType}<br>Zone: {f.Properties.IrrigationZone}<br>Elev: {f.Properties.ElevationM} m";
+
+    private static string Coord(double value) =>
+        value.ToString("F4", CultureInfo.InvariantCulture);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("agronomyMap.dispose");
+        }
+        catch
+        {
+            // The JS runtime may already be torn down during navigation.
+        }
+    }
+}

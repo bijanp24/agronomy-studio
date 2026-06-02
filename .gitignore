@@ -6,6 +6,12 @@
 /out-tsc
 /bazel-out
 
+# .NET / Blazor build output
+[Bb]in/
+[Oo]bj/
+/release
+*.user
+
 # Node
 /node_modules
 npm-debug.log

@@ -1,14 +1,17 @@
 # Agronomy Studio — Claude Instructions
 
-> **See also:** [Angular.md](./Angular.md) for Angular, TypeScript, and accessibility coding standards.
+> **See also:** [Blazor.md](./Blazor.md) for C#, .NET, Blazor, and accessibility coding standards.
 
 ## Project
 
-Angular 21 standalone-component SPA for California field intelligence.
-Two backend services proxied locally:
+Blazor WebAssembly (.NET 8) SPA for California field intelligence.
+Three backend services. In production, requests are proxied by Netlify redirects to the functions in `netlify/functions/*.mjs`. For local development the app points directly at the mock servers in `tools/mock-apis.mjs`:
 
 - `/field-api` → `http://localhost:4302` (field-intelligence-app)
 - `/weather-api` → `http://localhost:4300` (weather-intelligence-app)
+- `/query-api` → `http://localhost:4304` (query-intelligence-app)
+
+Run the app with `dotnet run`; start the mock APIs with `node tools/mock-apis.mjs`. API base URLs are configured in `wwwroot/appsettings.json` (production, relative paths) and `wwwroot/appsettings.Development.json` (local ports).
 
 ## Git Commit Guidelines
 

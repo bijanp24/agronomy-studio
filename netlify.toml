@@ -1,27 +1,13 @@
 [build]
-  command = "npm run build"
-  publish = "dist/agronomy-dashboard/browser"
-
-[build.environment]
-  NODE_VERSION = "22"
-
-[context.dev]
-  command = "npm run build:dev"
-
-[context.dev.environment]
-  APP_ENV = "dev"
-
-[context.test]
-  command = "npm run build:test"
-
-[context.test.environment]
-  APP_ENV = "test"
-
-[context.production]
-  command = "npm run build:prod"
-
-[context.production.environment]
-  APP_ENV = "production"
+  command = '''
+    curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 8.0 --install-dir "${HOME}/.dotnet" && \
+    export DOTNET_ROOT="${HOME}/.dotnet" && \
+    export PATH="${DOTNET_ROOT}:${PATH}" && \
+    dotnet --version && \
+    dotnet publish AgronomyStudio.csproj -c Release -o release && \
+    test -f release/wwwroot/_framework/blazor.boot.json
+  '''
+  publish = "release/wwwroot"
 
 [[redirects]]
   from = "/field-api/*"

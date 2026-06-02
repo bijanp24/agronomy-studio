@@ -35,14 +35,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
         with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+          dotnet-version: 8.0.x
 
       - name: Select deploy settings
         id: deploy
@@ -60,15 +56,12 @@ jobs:
 
           case "$target" in
             dev)
-              echo "build_script=build:dev" >> "$GITHUB_OUTPUT"
               echo "netlify_args=--alias=dev" >> "$GITHUB_OUTPUT"
               ;;
             test)
-              echo "build_script=build:test" >> "$GITHUB_OUTPUT"
               echo "netlify_args=--alias=test" >> "$GITHUB_OUTPUT"
               ;;
             production)
-              echo "build_script=build:prod" >> "$GITHUB_OUTPUT"
               echo "netlify_args=--prod" >> "$GITHUB_OUTPUT"
               ;;
             *)
@@ -77,11 +70,11 @@ jobs:
               ;;
           esac
 
-      - name: Run tests
-        run: npm run test:ci
+      - name: Publish
+        run: dotnet publish AgronomyStudio.csproj -c Release -o release
 
-      - name: Build
-        run: npm run ${{ steps.deploy.outputs.build_script }}
+      - name: Verify Blazor build output
+        run: test -f release/wwwroot/_framework/blazor.boot.json
 
       - name: Deploy to Netlify
         env:
@@ -89,7 +82,7 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: >
           npx netlify-cli@latest deploy
-          --dir=dist/agronomy-dashboard/browser
+          --dir=release/wwwroot
           --site="$NETLIFY_SITE_ID"
           --auth="$NETLIFY_AUTH_TOKEN"
           ${{ steps.deploy.outputs.netlify_args }}

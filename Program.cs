@@ -1,0 +1,38 @@
+using AgronomyStudio;
+using AgronomyStudio.Services;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
+
+var fieldApi = builder.Configuration["Api:FieldApi"] ?? "/field-api";
+var weatherApi = builder.Configuration["Api:WeatherApi"] ?? "/weather-api";
+var queryApi = builder.Configuration["Api:QueryApi"] ?? "/query-api";
+
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddTransient(sp => new ApiErrorHandler(sp.GetRequiredService<NotificationService>()));
+
+string Absolute(string value)
+{
+    var withSlash = value.EndsWith('/') ? value : value + "/";
+    return Uri.IsWellFormedUriString(withSlash, UriKind.Absolute)
+        ? withSlash
+        : new Uri(new Uri(builder.HostEnvironment.BaseAddress), withSlash.TrimStart('/')).ToString();
+}
+
+void AddApiClient(string name, string baseUrl) =>
+    builder.Services.AddHttpClient(name, client => client.BaseAddress = new Uri(Absolute(baseUrl)))
+        .AddHttpMessageHandler(sp => sp.GetRequiredService<ApiErrorHandler>());
+
+AddApiClient(ApiClients.Field, fieldApi);
+AddApiClient(ApiClients.Weather, weatherApi);
+AddApiClient(ApiClients.Query, queryApi);
+
+builder.Services.AddScoped<FieldIntelligenceService>();
+builder.Services.AddScoped<WeatherService>();
+builder.Services.AddScoped<QueryService>();
+builder.Services.AddScoped<BrowserStorage>();
+
+await builder.Build().RunAsync();

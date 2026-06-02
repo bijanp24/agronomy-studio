@@ -12,15 +12,15 @@ Agronomy Studio should use three long-lived environments with promotion through 
 
 Pull requests into `dev`, `test`, and `master` run the CI workflow:
 
-1. `npm ci`
-2. `npm run test:ci`
-3. `npm run build:prod`
+1. `dotnet restore`
+2. `dotnet publish -c Release -o release`
+3. Verify `release/wwwroot/_framework/blazor.boot.json` exists.
 
-Pushes to the environment branches run the Netlify deploy workflow:
+Pushes to the environment branches run the Netlify deploy workflow. Each runs `dotnet publish -c Release -o release`, verifies the Blazor build output, then deploys `release/wwwroot`:
 
-1. `dev` builds with `npm run build:dev` and publishes a Netlify deploy alias named `dev`.
-2. `test` builds with `npm run build:test` and publishes a Netlify deploy alias named `test`.
-3. `master` builds with `npm run build:prod` and publishes the production Netlify deploy.
+1. `dev` publishes a Netlify deploy alias named `dev`.
+2. `test` publishes a Netlify deploy alias named `test`.
+3. `master` publishes the production Netlify deploy.
 
 The workflow expects these GitHub repository secrets:
 

@@ -1,0 +1,40 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject NotificationService Notifications
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <span class="region-chip">US-CA · San Joaquin Valley</span>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@if (Notifications.Messages.Count > 0)
+{
+    <div class="toast-stack">
+        @foreach (var message in Notifications.Messages)
+        {
+            <div class="toast-item @(message.IsError ? "error" : "")" role="alert">
+                <span>@message.Text</span>
+                <button type="button" @onclick="() => Notifications.Dismiss(message)">Dismiss</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    protected override void OnInitialized() => Notifications.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Notifications.Changed -= OnChanged;
+}

@@ -1,0 +1,247 @@
+@page "/query"
+@using System.Text.Json
+@using System.Globalization
+@inject QueryService QueryService
+@inject BrowserStorage Storage
+
+<PageTitle>Query · Agronomy Studio</PageTitle>
+
+<div class="query-layout">
+    <aside class="query-history" aria-label="Query history">
+        <div class="history-header">
+            <h3>History</h3>
+            @if (_history.Count > 0)
+            {
+                <button class="icon-btn" @onclick="ClearHistory" title="Clear history" aria-label="Clear query history">
+                    <span class="bi bi-trash3" aria-hidden="true"></span>
+                </button>
+            }
+        </div>
+
+        @if (_history.Count > 0)
+        {
+            <ul class="history-list">
+                @foreach (var entry in _history)
+                {
+                    <li>
+                        <button class="history-item" @onclick="() => SelectHistory(entry)">
+                            <span class="history-question">@entry.Question</span>
+                            <span class="history-meta">@entry.RowCount rows</span>
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="history-empty">No queries yet.</p>
+        }
+    </aside>
+
+    <main class="query-main">
+        <div class="studio-card query-input-card">
+            <div class="provider-selector" role="group" aria-label="LLM provider">
+                @foreach (var p in Providers)
+                {
+                    <button type="button"
+                            class="provider-btn @(_provider == p.Value ? "active" : "")"
+                            title="@p.Tooltip"
+                            @onclick="() => _provider = p.Value">
+                        <span class="bi @p.Icon" aria-hidden="true"></span> @p.Label
+                    </button>
+                }
+            </div>
+
+            <form @onsubmit="Submit" class="query-form">
+                <label class="query-field">
+                    <span class="field-label">Ask a question about your field data</span>
+                    <textarea class="text-input"
+                              rows="2"
+                              placeholder="e.g. Which fields have high stress scores?"
+                              aria-label="Natural language query input"
+                              value="@_question"
+                              @oninput="e => _question = e.Value?.ToString() ?? string.Empty"
+                              disabled="@_loading"></textarea>
+                </label>
+                <button class="btn btn-primary"
+                        type="submit"
+                        disabled="@(string.IsNullOrWhiteSpace(_question) || _loading)"
+                        aria-label="Submit query">
+                    <span class="bi bi-send" aria-hidden="true"></span> Query
+                </button>
+            </form>
+
+            @if (_loading)
+            {
+                <div class="indeterminate-bar" role="progressbar" aria-label="Query in progress"></div>
+            }
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="studio-card query-error-card">
+                <div class="error-message">
+                    <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                    <span>@_error</span>
+                </div>
+            </div>
+        }
+
+        @if (_result is not null)
+        {
+            var res = _result;
+            <div class="studio-card query-result-card">
+                <div class="result-header">
+                    <h2 class="result-title">Results</h2>
+                    <div class="result-subtitle">
+                        @res.RowCount row@(res.RowCount != 1 ? "s" : "") · @res.ExecutionMs.ToString("0", CultureInfo.InvariantCulture)ms
+                        @if (res.Cached)
+                        {
+                            <span class="bi bi-database cached-icon" title="Served from cache" aria-hidden="true"></span>
+                        }
+                    </div>
+                </div>
+
+                <p class="result-summary">@res.Summary</p>
+
+                <label class="sql-toggle">
+                    <input type="checkbox" checked="@_showSql" @onchange="e => _showSql = e.Value is true" />
+                    Show SQL
+                </label>
+
+                @if (_showSql)
+                {
+                    <pre class="sql-block" aria-label="Generated SQL query"><code>@res.Sql</code></pre>
+                }
+
+                @if (res.Rows.Count > 0)
+                {
+                    <div class="table-container" role="region" aria-label="Query results table" tabindex="0">
+                        <table class="studio-table result-table">
+                            <thead>
+                                <tr>
+                                    @foreach (var col in Columns)
+                                    {
+                                        <th>@col</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in res.Rows)
+                                {
+                                    <tr>
+                                        @foreach (var col in Columns)
+                                        {
+                                            <td>@CellText(row, col)</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+    </main>
+</div>
+
+@code {
+    private const string HistoryKey = "agronomy_query_history";
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    private readonly record struct ProviderDef(string Value, string Label, string Icon, string Tooltip);
+
+    private static readonly ProviderDef[] Providers =
+    {
+        new("mock", "Mock", "bi-hdd-network", "Keyword-matched mock responses"),
+        new("openai", "OpenAI", "bi-stars", "OpenAI GPT-4o-mini"),
+        new("gemini", "Gemini", "bi-star-fill", "Google Gemini 2.0 Flash"),
+    };
+
+    private string _question = "";
+    private string _provider = "mock";
+    private bool _loading;
+    private QueryResponse? _result;
+    private string? _error;
+    private bool _showSql;
+    private List<QueryHistoryEntry> _history = new();
+
+    private List<string> Columns => _result?.Columns.Select(c => c.Name).ToList() ?? new();
+
+    protected override async Task OnInitializedAsync() => _history = await LoadHistory();
+
+    private async Task Submit()
+    {
+        var q = _question.Trim();
+        if (string.IsNullOrEmpty(q) || _loading) return;
+
+        _loading = true;
+        _error = null;
+        _result = null;
+
+        try
+        {
+            var res = await QueryService.QueryAsync(q, _provider);
+            _result = res;
+            await AddToHistory(q, res.RowCount);
+        }
+        catch (QueryException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SelectHistory(QueryHistoryEntry entry) => _question = entry.Question;
+
+    private async Task ClearHistory()
+    {
+        _history = new();
+        await Storage.RemoveItemAsync(HistoryKey);
+    }
+
+    private async Task AddToHistory(string question, int rowCount)
+    {
+        var entry = new QueryHistoryEntry
+        {
+            Question = question,
+            Timestamp = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+            RowCount = rowCount,
+        };
+
+        _history = new[] { entry }
+            .Concat(_history.Where(h => h.Question != question))
+            .Take(20)
+            .ToList();
+
+        await Storage.SetItemAsync(HistoryKey, JsonSerializer.Serialize(_history, JsonOptions));
+    }
+
+    private async Task<List<QueryHistoryEntry>> LoadHistory()
+    {
+        try
+        {
+            var raw = await Storage.GetItemAsync(HistoryKey);
+            if (string.IsNullOrEmpty(raw)) return new();
+            return JsonSerializer.Deserialize<List<QueryHistoryEntry>>(raw, JsonOptions) ?? new();
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
+    private static string CellText(Dictionary<string, JsonElement> row, string col)
+    {
+        if (!row.TryGetValue(col, out var value)) return "";
+        return value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString();
+    }
+}

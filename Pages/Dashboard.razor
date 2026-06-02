@@ -1,0 +1,138 @@
+@page "/"
+@page "/dashboard"
+@using System.Globalization
+@inject FieldIntelligenceService FieldService
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p class="page-sub">Aggregated stress, yield, and nutrition across all fields</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        Could not load dashboard data — check the dev servers.
+    </div>
+}
+
+@if (!_loading && !_hasError)
+{
+    <div class="kpi-row">
+        <div class="studio-card kpi-card">
+            <div class="kpi-value">@_fields.Count</div>
+            <div class="kpi-label">Total Fields</div>
+        </div>
+        <div class="studio-card kpi-card @(CriticalCount > 0 ? "has-issues" : "")">
+            <div class="kpi-value">@CriticalCount</div>
+            <div class="kpi-label">High / Critical Stress</div>
+        </div>
+        <div class="studio-card kpi-card">
+            <div class="kpi-value">@AvgYield t/ha</div>
+            <div class="kpi-label">Avg Predicted Yield</div>
+        </div>
+    </div>
+
+    <h2 class="section-title">Field Risk Map</h2>
+    <div class="stress-grid">
+        @foreach (var f in _fields)
+        {
+            <div class="stress-card stress-@f.StressLabel"
+                 role="button"
+                 tabindex="0"
+                 title="Click to view field details"
+                 @onclick="() => OpenField(f.FieldId)">
+                <div class="stress-field-name">@f.FieldName</div>
+                <div class="stress-crop">@f.Crop</div>
+                <div class="stress-score">@f.StressScore</div>
+                <div class="stress-label">@f.StressLabel</div>
+                <div class="progress-track stress-bar">
+                    <div class="progress-fill stress-fill-@f.StressLabel" style="width:@(f.StressScore)%"></div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <h2 class="section-title">Yield Forecast</h2>
+    <div class="studio-card">
+        <div class="table-scroll">
+            <table class="studio-table yield-table">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Crop</th>
+                        <th>Stress</th>
+                        <th>Predicted Yield</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in _fields)
+                    {
+                        <tr>
+                            <td>@f.FieldName</td>
+                            <td class="capitalize">@f.Crop</td>
+                            <td>
+                                <span class="stress-chip stress-@f.StressLabel">
+                                    @f.StressLabel (@f.StressScore)
+                                </span>
+                            </td>
+                            <td>@YieldTonnes(f.PredictedYieldKgPerHa) t/ha</td>
+                            <td><span class="conf-chip conf-@f.Confidence">@f.Confidence</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private List<FieldSummary> _fields = new();
+    private bool _loading = true;
+    private bool _hasError;
+
+    private int CriticalCount =>
+        _fields.Count(f => f.StressLabel is "critical" or "high");
+
+    private string AvgYield
+    {
+        get
+        {
+            if (_fields.Count == 0) return "—";
+            var avg = _fields.Average(f => f.PredictedYieldKgPerHa);
+            return (avg / 1000).ToString("F2", CultureInfo.InvariantCulture);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var summary = await FieldService.GetDashboardSummaryAsync();
+            _fields = summary?.Fields ?? new();
+        }
+        catch
+        {
+            _hasError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenField(string fieldId) =>
+        Navigation.NavigateTo($"fields?expand={fieldId}");
+
+    private static string YieldTonnes(double kgPerHa) =>
+        (kgPerHa / 1000).ToString("F2", CultureInfo.InvariantCulture);
+}

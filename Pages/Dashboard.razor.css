@@ -1,0 +1,145 @@
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.kpi-card {
+    text-align: center;
+}
+
+    .kpi-card .kpi-value {
+        font-size: 32px;
+        font-weight: 900;
+        color: var(--theme-primary);
+    }
+
+    .kpi-card .kpi-label {
+        font-size: 12px;
+        color: var(--theme-muted);
+        margin-top: 4px;
+    }
+
+    .kpi-card.has-issues .kpi-value {
+        color: var(--theme-danger);
+    }
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--theme-primary);
+    margin: 24px 0 12px;
+}
+
+.stress-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.stress-card {
+    cursor: pointer;
+    transition: transform 0.15s;
+    padding: 12px;
+}
+
+    .stress-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .stress-card .stress-field-name {
+        font-weight: 700;
+        font-size: 13px;
+        margin-bottom: 2px;
+    }
+
+    .stress-card .stress-crop {
+        font-size: 11px;
+        color: var(--theme-muted);
+        text-transform: capitalize;
+        margin-bottom: 8px;
+    }
+
+    .stress-card .stress-score {
+        font-size: 28px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .stress-card .stress-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+
+    .stress-card.stress-low {
+        background: var(--theme-success-soft);
+    }
+
+    .stress-card.stress-moderate {
+        background: var(--theme-warning-soft);
+    }
+
+    .stress-card.stress-high {
+        background: #fca5a5;
+    }
+
+    .stress-card.stress-critical {
+        background: #f87171;
+    }
+
+.stress-bar {
+    margin-top: 4px;
+}
+
+.stress-fill-low {
+    background: var(--theme-success);
+}
+
+.stress-fill-moderate {
+    background: var(--theme-warning);
+}
+
+.stress-fill-high {
+    background: var(--theme-danger);
+}
+
+.stress-fill-critical {
+    background: #7f1d1d;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.stress-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+    .stress-chip.stress-low {
+        background: var(--theme-success-soft);
+        color: #14532d;
+    }
+
+    .stress-chip.stress-moderate {
+        background: var(--theme-warning-soft);
+        color: #78350f;
+    }
+
+    .stress-chip.stress-high {
+        background: #fca5a5;
+        color: #7f1d1d;
+    }
+
+    .stress-chip.stress-critical {
+        background: #f87171;
+        color: #450a0a;
+    }

@@ -1,0 +1,308 @@
+@page "/fields"
+@using System.Globalization
+@inject FieldIntelligenceService FieldService
+@inject NavigationManager Navigation
+
+<PageTitle>Fields · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Fields</h1>
+    <p class="page-sub">Nutrient ledger, yield prediction, and operation history per field</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_hasError)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        Could not load fields — check the dev servers.
+    </div>
+}
+
+@if (!_loading && !_hasError && _details.Count == 0)
+{
+    <div class="studio-card empty-card">
+        <span class="bi bi-flower2" aria-hidden="true"></span>
+        No fields found. Check that the field-intelligence server is returning data.
+    </div>
+}
+
+<div class="accordion-stack">
+    @foreach (var d in _details)
+    {
+        var expanded = _expanded.Contains(d.Field.Id);
+        <div class="studio-card field-panel">
+            <button type="button" class="panel-header" aria-expanded="@expanded" @onclick="() => Toggle(d.Field.Id)">
+                <span class="panel-title">
+                    <span class="bi bi-tree field-icon" aria-hidden="true"></span>
+                    @d.Field.Name
+                </span>
+                <span class="panel-desc">
+                    @d.Field.SoilType · @d.Field.AreaHectares ha · @d.Field.RegionCode
+                    <span class="bi @(expanded ? "bi-chevron-up" : "bi-chevron-down")" aria-hidden="true"></span>
+                </span>
+            </button>
+
+            @if (expanded)
+            {
+                <div class="panel-body">
+                    @if (d.Nutrients is not null)
+                    {
+                        <h3 class="sub-title">N / P / K Balance</h3>
+                        <div class="npk-row">
+                            @foreach (var n in NutrientCards(d.Nutrients))
+                            {
+                                <div class="npk-card npk-@BalanceClass(n.Entry.Balance)">
+                                    <div class="npk-label">@n.Label</div>
+                                    <div class="npk-balance">@Round0(n.Entry.Balance) kg/ha</div>
+                                    <div class="npk-detail">
+                                        Soil @Round0(n.Entry.Soil) · App @Round0(n.Entry.Applied) · Uptake @Round0(n.Entry.Uptake)
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        @if (d.Nutrients.Warnings.Count > 0)
+                        {
+                            <div class="warnings">
+                                @foreach (var w in d.Nutrients.Warnings)
+                                {
+                                    <div class="warning-row">
+                                        <span class="bi bi-exclamation-triangle warn-icon" aria-hidden="true"></span>
+                                        @w.Message
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (d.Yield is not null)
+                    {
+                        <hr class="divider" />
+                        <h3 class="sub-title">Yield Prediction</h3>
+                        <div class="yield-summary">
+                            <span class="yield-val">@YieldTonnes(d.Yield.PredictedYieldKgPerHa) t/ha</span>
+                            <span class="conf-chip conf-@d.Yield.Confidence">@d.Yield.Confidence confidence</span>
+                        </div>
+                        <div class="factors-grid">
+                            @foreach (var factor in YieldFactorDefs)
+                            {
+                                var pct = FactorPct(factor.Selector(d.Yield.Factors));
+                                <div class="factor-item">
+                                    <div class="factor-label">@factor.Label</div>
+                                    <div class="progress-track">
+                                        <div class="progress-fill @(pct < 70 ? "warn-bar" : "")" style="width:@(pct)%"></div>
+                                    </div>
+                                    <div class="factor-pct">@pct%</div>
+                                </div>
+                            }
+                        </div>
+                        @if (d.Yield.LimitingFactors.Count > 0)
+                        {
+                            <p class="limiting">Limiting: @string.Join(", ", d.Yield.LimitingFactors)</p>
+                        }
+                    }
+
+                    @if (d.Loaded && d.Operations.Count == 0)
+                    {
+                        <p class="no-data">No operations recorded for this field.</p>
+                    }
+                    @if (d.Operations.Count > 0)
+                    {
+                        <hr class="divider" />
+                        <h3 class="sub-title">Recent Operations</h3>
+                        <table class="studio-table ops-table">
+                            <thead>
+                                <tr><th>Type</th><th>Date</th><th>Notes</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var op in d.Operations)
+                                {
+                                    <tr>
+                                        <td class="capitalize">@op.OperationType</td>
+                                        <td>@MediumDate(op.Timestamp)</td>
+                                        <td>@(string.IsNullOrEmpty(op.Notes) ? "—" : op.Notes)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @if (d.SoilTests.Count > 0)
+                    {
+                        var latest = d.SoilTests[0];
+                        <hr class="divider" />
+                        <h3 class="sub-title">Soil Tests</h3>
+                        <div class="soil-meta">
+                            Latest: @MediumDate(latest.SampleDate) · @latest.LabName
+                            @if (!string.IsNullOrEmpty(latest.Notes))
+                            {
+                                <span class="soil-notes">— @latest.Notes</span>
+                            }
+                        </div>
+                        <div class="soil-grid">
+                            @foreach (var m in SoilMetricDefs)
+                            {
+                                <div class="soil-stat">
+                                    <div class="soil-stat-label">@m.Label</div>
+                                    <div class="soil-stat-value">@Decimal1To2(m.Selector(latest))</div>
+                                    <div class="soil-stat-unit">@m.Unit</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private sealed class FieldDetail
+    {
+        public required Field Field { get; init; }
+        public NutrientBalance? Nutrients { get; set; }
+        public YieldPrediction? Yield { get; set; }
+        public List<FieldOperation> Operations { get; set; } = new();
+        public List<SoilTest> SoilTests { get; set; } = new();
+        public bool Loaded { get; set; }
+    }
+
+    private readonly record struct FactorDef(string Label, Func<YieldFactors, double> Selector);
+    private readonly record struct SoilMetricDef(string Label, string Unit, Func<SoilTest, double> Selector);
+
+    private static readonly FactorDef[] YieldFactorDefs =
+    {
+        new("Seed", f => f.Seed),
+        new("Planting", f => f.Planting),
+        new("Water", f => f.Water),
+        new("Nutrient", f => f.Nutrient),
+        new("Heat", f => f.Heat),
+        new("UV", f => f.Uv),
+    };
+
+    private static readonly SoilMetricDef[] SoilMetricDefs =
+    {
+        new("pH", "", s => s.SoilPh),
+        new("OM", "%", s => s.OrganicMatterPercent),
+        new("CEC", "meq", s => s.CationExchangeCapacity),
+        new("NO\u2083-N", "ppm", s => s.NitrateNppm),
+        new("P", "ppm", s => s.PhosphorusPpm),
+        new("K", "ppm", s => s.PotassiumPpm),
+        new("EC", "dS/m", s => s.ElectricalConductivity),
+    };
+
+    private List<FieldDetail> _details = new();
+    private readonly HashSet<string> _expanded = new();
+    private bool _loading = true;
+    private bool _hasError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var expandId = GetExpandParam();
+        if (!string.IsNullOrEmpty(expandId))
+        {
+            _expanded.Add(expandId);
+        }
+
+        try
+        {
+            var response = await FieldService.GetFieldsAsync();
+            var fields = response?.Fields ?? new();
+            _details = fields.Select(f => new FieldDetail { Field = f }).ToList();
+            _loading = false;
+
+            foreach (var detail in _details)
+            {
+                _ = LoadDetailAsync(detail);
+            }
+        }
+        catch
+        {
+            _hasError = true;
+            _loading = false;
+        }
+    }
+
+    private async Task LoadDetailAsync(FieldDetail detail)
+    {
+        try
+        {
+            var nutrientsTask = FieldService.GetNutrientBalanceAsync(detail.Field.Id);
+            var yieldTask = FieldService.GetYieldPredictionAsync(detail.Field.Id);
+            var operationsTask = FieldService.GetOperationsAsync(detail.Field.Id);
+            var soilTask = FieldService.GetSoilTestsAsync(detail.Field.Id);
+
+            await Task.WhenAll(nutrientsTask, yieldTask, operationsTask, soilTask);
+
+            detail.Nutrients = nutrientsTask.Result;
+            detail.Yield = yieldTask.Result;
+            detail.Operations = operationsTask.Result?.Operations ?? new();
+            detail.SoilTests = (soilTask.Result?.SoilTests ?? new())
+                .OrderByDescending(s => ParseDate(s.SampleDate))
+                .ToList();
+            detail.Loaded = true;
+        }
+        catch
+        {
+            // Individual field detail failures are surfaced via the global error toast.
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Toggle(string fieldId)
+    {
+        if (!_expanded.Remove(fieldId))
+        {
+            _expanded.Add(fieldId);
+        }
+    }
+
+    private string? GetExpandParam()
+    {
+        var query = new Uri(Navigation.Uri).Query.TrimStart('?');
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts[0] == "expand" && parts.Length == 2)
+            {
+                return Uri.UnescapeDataString(parts[1]);
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<(string Label, NutrientEntry Entry)> NutrientCards(NutrientBalance b) =>
+        new[] { ("N", b.N), ("P", b.P), ("K", b.K) };
+
+    private static string BalanceClass(double balance) =>
+        balance < 0 ? "danger" : balance < 20 ? "warn" : "ok";
+
+    private static int FactorPct(double v) => (int)Math.Round(v * 100);
+
+    private static string YieldTonnes(double kgPerHa) =>
+        (kgPerHa / 1000).ToString("F2", CultureInfo.InvariantCulture);
+
+    private static string Round0(double v) =>
+        Math.Round(v, MidpointRounding.AwayFromZero).ToString("F0", CultureInfo.InvariantCulture);
+
+    private static string Decimal1To2(double v) =>
+        v.ToString("0.0#", CultureInfo.InvariantCulture);
+
+    private static DateTime ParseDate(string value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt
+            : DateTime.MinValue;
+
+    private static string MediumDate(string value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+            : value;
+}
