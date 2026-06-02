@@ -50,6 +50,11 @@
   status = 200
 
 [[redirects]]
+  from = "/fret-api/*"
+  to = "/.netlify/functions/fret-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/agronomy-api/*"
   to = "/.netlify/functions/agronomy-api/:splat"
   status = 200
