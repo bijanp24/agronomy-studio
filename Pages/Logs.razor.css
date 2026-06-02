@@ -1,0 +1,79 @@
+.controls-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.control-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--theme-muted, #6b7280);
+}
+
+.ghost-button {
+    border: 1px solid var(--theme-border, #e5e7eb);
+    background: transparent;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--theme-text, #1f2937);
+}
+
+.ghost-button:hover {
+    border-color: var(--theme-accent, #2563eb);
+    color: var(--theme-accent, #2563eb);
+}
+
+.count-note {
+    font-size: 0.8rem;
+    color: var(--theme-muted, #6b7280);
+    margin-left: auto;
+}
+
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+}
+
+.export-pre {
+    max-height: 320px;
+    overflow: auto;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.lvl {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 5px;
+    text-transform: uppercase;
+}
+
+.lvl-debug {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.lvl-info {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.lvl-warn {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+.lvl-error {
+    background: #fee2e2;
+    color: #b91c1c;
+}

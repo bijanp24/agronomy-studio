@@ -17,8 +17,11 @@ var openMeteoApi = builder.Configuration["Api:OpenMeteoApi"] ?? "https://api.ope
 var agronomyApi = builder.Configuration["Api:AgronomyApi"] ?? "/agronomy-api";
 var aiSearchApi = builder.Configuration["Api:AiSearchApi"] ?? "/ai-search-api";
 
+builder.Services.AddSingleton<LogService>();
 builder.Services.AddScoped<NotificationService>();
-builder.Services.AddTransient(sp => new ApiErrorHandler(sp.GetRequiredService<NotificationService>()));
+builder.Services.AddTransient(sp => new ApiErrorHandler(
+    sp.GetRequiredService<NotificationService>(),
+    sp.GetRequiredService<LogService>()));
 
 string Absolute(string value)
 {
