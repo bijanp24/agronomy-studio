@@ -1,0 +1,241 @@
+.empty-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--theme-muted);
+}
+
+.accordion-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.panel-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: none;
+    border: none;
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    font-size: 15px;
+}
+
+    .panel-header:hover {
+        background: var(--theme-surface-hover);
+    }
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: var(--theme-fg);
+}
+
+.field-icon {
+    margin-right: 8px;
+    color: var(--theme-success);
+}
+
+.panel-desc {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--theme-muted);
+}
+
+.panel-body {
+    padding: 8px 16px 16px;
+}
+
+.sub-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--theme-primary);
+    margin: 16px 0 10px;
+}
+
+.npk-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.npk-card {
+    text-align: center;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+    .npk-card .npk-label {
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    .npk-card .npk-balance {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 4px 0;
+    }
+
+    .npk-card .npk-detail {
+        font-size: 10px;
+        color: var(--theme-muted);
+    }
+
+    .npk-card.npk-ok {
+        background: var(--theme-success-soft);
+    }
+
+        .npk-card.npk-ok .npk-label {
+            color: #14532d;
+        }
+
+    .npk-card.npk-warn {
+        background: var(--theme-warning-soft);
+    }
+
+        .npk-card.npk-warn .npk-label {
+            color: #78350f;
+        }
+
+    .npk-card.npk-danger {
+        background: var(--theme-danger-soft);
+    }
+
+        .npk-card.npk-danger .npk-label {
+            color: #7f1d1d;
+        }
+
+.warnings {
+    margin-bottom: 8px;
+}
+
+.warning-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--theme-warning);
+    margin-bottom: 4px;
+}
+
+.divider {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px solid var(--theme-border);
+}
+
+.yield-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+    .yield-summary .yield-val {
+        font-size: 28px;
+        font-weight: 900;
+        color: var(--theme-primary);
+    }
+
+.factors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.factor-item .factor-label {
+    font-size: 11px;
+    color: var(--theme-muted);
+    margin-bottom: 4px;
+}
+
+.factor-item .factor-pct {
+    font-size: 11px;
+    color: var(--theme-primary);
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.factor-item .progress-fill.warn-bar {
+    background: var(--theme-warning);
+}
+
+.limiting {
+    font-size: 12px;
+    color: var(--theme-warning);
+    margin: 4px 0 0;
+}
+
+.no-data {
+    font-size: 13px;
+    color: var(--theme-muted);
+    margin: 4px 0;
+}
+
+.soil-meta {
+    font-size: 12px;
+    color: var(--theme-muted);
+    margin-bottom: 12px;
+}
+
+    .soil-meta .soil-notes {
+        font-style: italic;
+    }
+
+.soil-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.soil-stat {
+    background: var(--theme-surface-hover);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+}
+
+    .soil-stat .soil-stat-label {
+        font-size: 11px;
+        color: var(--theme-muted);
+        margin-bottom: 4px;
+    }
+
+    .soil-stat .soil-stat-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--theme-primary);
+    }
+
+    .soil-stat .soil-stat-unit {
+        font-size: 10px;
+        color: var(--theme-muted);
+        margin-top: 2px;
+    }
+
+@media (max-width: 600px) {
+    .npk-row {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}

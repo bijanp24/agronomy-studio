@@ -1,0 +1,267 @@
+@page "/entropy"
+@using System.Globalization
+@implements IDisposable
+@inject WeatherService Weather
+
+<PageTitle>Entropy · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Atmospheric Entropy</h1>
+    <p class="page-sub">Live weather readings as a true entropy source — no Math.random()</p>
+</div>
+
+<div class="entropy-layout">
+    <div class="entropy-left">
+        <div class="studio-card controls-card">
+            <label class="postal-field">
+                <span class="field-label">Postal Code</span>
+                <input class="text-input" value="@_postalCode" @oninput="OnPostalChanged" placeholder="93650" />
+            </label>
+            <button class="btn btn-primary" @onclick="Fetch" disabled="@_loading">
+                <span class="bi bi-arrow-repeat" aria-hidden="true"></span> Roll
+            </button>
+            <label class="auto-toggle">
+                <input type="checkbox" checked="@_autoRefresh" @onchange="OnAutoChanged" />
+                Auto (5s)
+            </label>
+        </div>
+
+        @if (_hasError)
+        {
+            <div class="studio-card error-card">
+                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                Could not load entropy — check the dev servers.
+            </div>
+        }
+
+        @if (_loading)
+        {
+            <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+        }
+
+        @if (_current is not null)
+        {
+            var c = _current;
+            <div class="studio-card entropy-val-card">
+                <div class="entropy-number">@c.Entropy.ToString("F6", CultureInfo.InvariantCulture)</div>
+                <div class="entropy-label">entropy ∈ [0, 1)</div>
+                <div class="progress-track entropy-bar">
+                    <div class="progress-fill" style="width:@(EntropyPct)%"></div>
+                </div>
+                <div class="entropy-loc">@c.Location · @MediumTime(c.Timestamp)</div>
+            </div>
+
+            <div class="outcomes-grid">
+                <div class="studio-card outcome-card">
+                    <span class="bi bi-coin" aria-hidden="true"></span>
+                    <div class="outcome-val">@CoinFlip</div>
+                    <div class="outcome-label">Coin Flip</div>
+                </div>
+                <div class="studio-card outcome-card">
+                    <span class="bi bi-dice-6" aria-hidden="true"></span>
+                    <div class="outcome-val">@D6</div>
+                    <div class="outcome-label">d6</div>
+                </div>
+                <div class="studio-card outcome-card">
+                    <span class="bi bi-dice-5" aria-hidden="true"></span>
+                    <div class="outcome-val">@D20</div>
+                    <div class="outcome-label">d20</div>
+                </div>
+                <div class="studio-card outcome-card">
+                    <span class="bi bi-percent" aria-hidden="true"></span>
+                    <div class="outcome-val">@Percent</div>
+                    <div class="outcome-label">Percentile</div>
+                </div>
+            </div>
+
+            <div class="studio-card">
+                <h2 class="card-title">Atmospheric Inputs</h2>
+                @for (var i = 0; i < FieldMeta.Length; i++)
+                {
+                    var meta = FieldMeta[i];
+                    <div class="gauge-row">
+                        <div class="gauge-label">@meta.Label</div>
+                        <div class="progress-track gauge-bar">
+                            <div class="progress-fill" style="width:@(VectorPct(c.Vector, i))%"></div>
+                        </div>
+                        <div class="gauge-val">@AtmosphericVal(c.Atmospheric, meta.Key) @meta.Unit</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="entropy-right">
+        <div class="studio-card history-card">
+            <h2 class="card-title">History</h2>
+            @if (_history is not null && _history.Records.Count > 0)
+            {
+                <svg class="sparkline" viewBox="0 0 600 80" preserveAspectRatio="none">
+                    <path d="@SparklinePath(_history.Records)" fill="none" stroke="var(--theme-accent)" stroke-width="2" />
+                    <path d="@MeanLine(_history)" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3" />
+                </svg>
+                <div class="history-stats">
+                    <span>Readings: <strong>@_history.Stats.Count</strong></span>
+                    <span>Mean: <strong>@_history.Stats.MeanEntropy.ToString("F4", CultureInfo.InvariantCulture)</strong></span>
+                    <span>Variance: <strong>@_history.Stats.VarianceEntropy.ToString("F4", CultureInfo.InvariantCulture)</strong></span>
+                </div>
+                <div class="history-list">
+                    @foreach (var r in _history.Records.AsEnumerable().Reverse().Take(20))
+                    {
+                        <div class="history-row">
+                            <span class="h-time">@MediumTime(r.Timestamp)</span>
+                            <span class="h-val">@r.Entropy.ToString("F4", CultureInfo.InvariantCulture)</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="muted">No history yet — click Roll to generate readings.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly record struct FieldMetaDef(string Key, string Label, string Unit);
+
+    private static readonly FieldMetaDef[] FieldMeta =
+    {
+        new("precip1Hour", "Precip 1hr", "in"),
+        new("pressureAltimeter", "Pressure", "inHg"),
+        new("relativeHumidity", "Humidity", "%"),
+        new("windSpeed", "Wind", "mph"),
+        new("temperature", "Temperature", "\u00B0F"),
+    };
+
+    private EntropyReading? _current;
+    private EntropyHistory? _history;
+    private bool _loading;
+    private bool _hasError;
+    private bool _autoRefresh;
+    private string _postalCode = "93650";
+    private CancellationTokenSource? _autoCts;
+
+    private int EntropyPct => _current is null ? 0 : (int)Math.Round(_current.Entropy * 100);
+    private string CoinFlip => _current is null ? "—" : _current.Entropy >= 0.5 ? "Heads" : "Tails";
+    private string D6 => _current is null ? "—" : ((int)Math.Floor(_current.Entropy * 6) + 1).ToString();
+    private string D20 => _current is null ? "—" : ((int)Math.Floor(_current.Entropy * 20) + 1).ToString();
+    private string Percent => _current is null ? "—" : (_current.Entropy * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
+
+    protected override async Task OnInitializedAsync() => await Fetch();
+
+    private async Task Fetch()
+    {
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            _current = await Weather.GetEntropyCurrentAsync(_postalCode);
+            _loading = false;
+            await LoadHistory();
+        }
+        catch
+        {
+            _hasError = true;
+            _loading = false;
+        }
+    }
+
+    private async Task LoadHistory()
+    {
+        try
+        {
+            _history = await Weather.GetEntropyHistoryAsync();
+        }
+        catch
+        {
+            // History is best-effort; the current reading error state already covers connectivity issues.
+        }
+    }
+
+    private void OnPostalChanged(ChangeEventArgs e) => _postalCode = e.Value?.ToString() ?? "";
+
+    private async Task OnAutoChanged(ChangeEventArgs e)
+    {
+        var on = e.Value is true;
+        _autoRefresh = on;
+        if (on)
+        {
+            _autoCts = new CancellationTokenSource();
+            _ = AutoLoop(_autoCts.Token);
+        }
+        else
+        {
+            _autoCts?.Cancel();
+            _autoCts = null;
+        }
+
+        await Task.CompletedTask;
+    }
+
+    private async Task AutoLoop(CancellationToken ct)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await Fetch();
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Auto-refresh was turned off.
+        }
+    }
+
+    private static int VectorPct(List<double> vector, int index) =>
+        index < vector.Count ? (int)Math.Round(vector[index] * 100) : 0;
+
+    private static string AtmosphericVal(AtmosphericSnapshot a, string key) => key switch
+    {
+        "precip1Hour" => Trim(a.Precip1Hour),
+        "pressureAltimeter" => Trim(a.PressureAltimeter),
+        "relativeHumidity" => Trim(a.RelativeHumidity),
+        "windSpeed" => Trim(a.WindSpeed),
+        "temperature" => Trim(a.Temperature),
+        _ => "",
+    };
+
+    private static string Trim(double v) => v.ToString("0.######", CultureInfo.InvariantCulture);
+
+    private static string SparklinePath(List<EntropyReading> records)
+    {
+        if (records.Count == 0) return "";
+        const double w = 600, h = 80, pad = 4;
+        var step = (w - pad * 2) / Math.Max(records.Count - 1, 1);
+        var segments = records.Select((r, i) =>
+        {
+            var x = pad + i * step;
+            var y = h - pad - (r.Entropy * (h - pad * 2));
+            var cmd = i == 0 ? "M" : "L";
+            return $"{cmd} {x.ToString("F1", CultureInfo.InvariantCulture)} {y.ToString("F1", CultureInfo.InvariantCulture)}";
+        });
+        return string.Join(" ", segments);
+    }
+
+    private static string MeanLine(EntropyHistory h)
+    {
+        var y = 80 - 4 - (h.Stats.MeanEntropy * (80 - 8));
+        var yText = y.ToString("F1", CultureInfo.InvariantCulture);
+        return $"M 4 {yText} L 596 {yText}";
+    }
+
+    private static string MediumTime(string value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToLocalTime().ToString("h:mm:ss tt", CultureInfo.InvariantCulture)
+            : value;
+
+    public void Dispose()
+    {
+        _autoCts?.Cancel();
+        _autoCts?.Dispose();
+    }
+}
