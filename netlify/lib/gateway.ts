@@ -1,3 +1,4 @@
+import { getCurrentEto as getCimisEto } from './cimis';
 import type { Logger } from './http';
 import { computeIrrigation } from './irrigation';
 import type {
@@ -83,7 +84,14 @@ const placeholderProviders: GatewayProviders = {
   },
 };
 
-let activeProviders: GatewayProviders = placeholderProviders;
+// Real providers wired as milestones land; unimplemented ones fall back to
+// placeholders so the gateway always returns a usable (if partial) response.
+const defaultProviders: GatewayProviders = {
+  ...placeholderProviders,
+  getEvapotranspiration: (point, logger) => getCimisEto(point, { logger }),
+};
+
+let activeProviders: GatewayProviders = defaultProviders;
 
 /** Override one or more providers (used as later milestones land real modules, and by tests). */
 export function configureProviders(overrides: Partial<GatewayProviders>): void {

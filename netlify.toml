@@ -35,6 +35,11 @@
   status = 200
 
 [[redirects]]
+  from = "/cimis-api/*"
+  to = "/.netlify/functions/cimis-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/agronomy-api/*"
   to = "/.netlify/functions/agronomy-api/:splat"
   status = 200
