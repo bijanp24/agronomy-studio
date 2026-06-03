@@ -2,7 +2,10 @@
 @using System.Globalization
 @implements IAsyncDisposable
 @inject FieldIntelligenceService FieldService
+@inject AirQualityService AirQualityService
+@inject SolarService SolarService
 @inject IJSRuntime JS
+@inject IConfiguration Configuration
 
 <PageTitle>GIS Blocks · Agronomy Studio</PageTitle>
 
@@ -26,6 +29,19 @@
 
 @if (!_loading && !_hasError)
 {
+    @if (_airQuality != null)
+    {
+        <div class="aqi-banner" style="border-left-color: @_airQuality.BannerColor">
+            <span class="aqi-badge" style="background: @_airQuality.BannerColor">AQI @_airQuality.Aqi</span>
+            <span class="aqi-category">@_airQuality.Category</span>
+            @if (!string.IsNullOrEmpty(_airQuality.DominantPollutant))
+            {
+                <span class="aqi-pollutant">· @_airQuality.DominantPollutant</span>
+            }
+            <span class="aqi-location">· San Joaquin Valley</span>
+        </div>
+    }
+
     <div class="studio-card filter-card">
         <label class="filter-field">
             <span class="field-label">Irrigation Zone</span>
@@ -49,6 +65,24 @@
             </select>
         </label>
 
+        <label class="filter-field">
+            <span class="field-label">Map View</span>
+            <select class="text-input" value="@_mapType" @onchange="OnMapTypeChanged">
+                <option value="hybrid">Hybrid (satellite + labels)</option>
+                <option value="satellite">Satellite</option>
+                <option value="roadmap">Road map</option>
+                <option value="terrain">Terrain</option>
+            </select>
+        </label>
+
+        <label class="filter-field toggle-field">
+            <span class="field-label">Visualization</span>
+            <label class="toggle-label">
+                <input type="checkbox" @bind="_showHeatmap" @bind:after="OnHeatmapToggled" />
+                Elevation heatmap
+            </label>
+        </label>
+
         <span class="result-count">
             Showing @Filtered.Count of @FilteredCount
             @if (FilteredCount > 150)
@@ -60,15 +94,77 @@
 
     <div class="studio-card map-card">
         <div id="gis-map" class="map-container"></div>
-        <div class="map-legend">
-            @foreach (var entry in Legend)
-            {
-                <span class="legend-item">
-                    <span class="legend-dot" style="background:@entry.Color"></span>@entry.Label
-                </span>
-            }
-        </div>
+        @if (!_showHeatmap)
+        {
+            <div class="map-legend">
+                @foreach (var entry in Legend)
+                {
+                    <span class="legend-item">
+                        <span class="legend-dot" style="background:@entry.Color"></span>@entry.Label
+                    </span>
+                }
+            </div>
+        }
     </div>
+
+    @if (_selectedBlock != null)
+    {
+        <div class="studio-card block-detail-card">
+            <div class="block-detail-header">
+                <div>
+                    <span class="block-detail-id">@_selectedBlock.Id</span>
+                    <span class="block-detail-crop capitalize">@_selectedBlock.Properties.CropType</span>
+                    <span class="zone-chip">@_selectedBlock.Properties.IrrigationZone</span>
+                </div>
+                <button class="detail-close" @onclick="CloseBlockDetail" aria-label="Close">×</button>
+            </div>
+
+            <div class="block-detail-grid">
+                <div class="detail-section">
+                    <h4 class="detail-section-title">Block Info</h4>
+                    <div class="detail-row">
+                        <span class="detail-label">Soil type</span>
+                        <span>@_selectedBlock.Properties.SoilType</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Elevation</span>
+                        <span>@_selectedBlock.Properties.ElevationM m</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Coordinates</span>
+                        <span class="mono">@Coord(_selectedBlock.Properties.CenterLat), @Coord(_selectedBlock.Properties.CenterLon)</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4 class="detail-section-title">Solar Potential</h4>
+                    @if (_solarLoading)
+                    {
+                        <span class="detail-loading">Fetching solar data…</span>
+                    }
+                    else if (_solarData?.SolarPotential != null)
+                    {
+                        <div class="detail-row">
+                            <span class="detail-label">Peak sun hours / yr</span>
+                            <span>@_solarData.SolarPotential.MaxSunshineHoursPerYear.ToString("N0") hrs</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Carbon offset factor</span>
+                            <span>@_solarData.SolarPotential.CarbonOffsetFactorKgPerMwh.ToString("N0") kg/MWh</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Panel capacity</span>
+                            <span>@_solarData.SolarPotential.PanelCapacityWatts W</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="detail-na">No solar data available for this block</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 
     <div class="studio-card table-card">
         <div class="table-scroll">
@@ -127,9 +223,18 @@
     private List<string> _crops = new();
     private string _selectedZone = "";
     private string _selectedCrop = "";
+    private string _mapType = "hybrid";
+    private bool _showHeatmap;
     private bool _loading = true;
     private bool _hasError;
     private bool _mapReady;
+
+    private AirQualityResult? _airQuality;
+    private GeoJsonFeature? _selectedBlock;
+    private SolarData? _solarData;
+    private bool _solarLoading;
+
+    private DotNetObjectReference<Gis>? _dotNetRef;
 
     private List<GeoJsonFeature> FilteredAll => _features
         .Where(f => (string.IsNullOrEmpty(_selectedZone) || f.Properties.IrrigationZone == _selectedZone)
@@ -142,12 +247,20 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _dotNetRef = DotNetObjectReference.Create(this);
+
         try
         {
-            var collection = await FieldService.GetGisBlocksAsync();
+            var blocksTask = FieldService.GetGisBlocksAsync();
+            var aqiTask = AirQualityService.GetCurrentConditionsAsync(36.7, -119.8);
+
+            await Task.WhenAll(blocksTask, aqiTask);
+
+            var collection = blocksTask.Result;
             _features = collection?.Features ?? new();
             _zones = _features.Select(f => f.Properties.IrrigationZone).Distinct().OrderBy(z => z).ToList();
             _crops = _features.Select(f => f.Properties.CropType).Distinct().OrderBy(c => c).ToList();
+            _airQuality = aqiTask.Result;
         }
         catch
         {
@@ -163,7 +276,8 @@
     {
         if (!_mapReady && !_loading && !_hasError)
         {
-            await JS.InvokeVoidAsync("agronomyMap.init", "gis-map", 36.7, -119.8, 9);
+            var apiKey = Configuration["GoogleMaps:ApiKey"] ?? "";
+            await JS.InvokeVoidAsync("agronomyMap.init", "gis-map", 36.7, -119.8, 9, apiKey, _dotNetRef);
             _mapReady = true;
             await RenderMap();
         }
@@ -180,6 +294,9 @@
                 ? f.Geometry.Coordinates[0].Select(pair => new[] { pair[1], pair[0] }).ToArray()
                 : Array.Empty<double[]>(),
             popupHtml = PopupHtml(f),
+            blockId = f.Id,
+            lat = f.Properties.CenterLat,
+            lng = f.Properties.CenterLon,
         }).ToArray();
 
         await JS.InvokeVoidAsync("agronomyMap.render", (object)shapes);
@@ -188,13 +305,70 @@
     private async Task OnZoneChanged(ChangeEventArgs e)
     {
         _selectedZone = e.Value?.ToString() ?? "";
-        await RenderMap();
+        _selectedBlock = null;
+        _solarData = null;
+        if (_showHeatmap)
+            await RenderHeatmap();
+        else
+            await RenderMap();
     }
 
     private async Task OnCropChanged(ChangeEventArgs e)
     {
         _selectedCrop = e.Value?.ToString() ?? "";
-        await RenderMap();
+        _selectedBlock = null;
+        _solarData = null;
+        if (_showHeatmap)
+            await RenderHeatmap();
+        else
+            await RenderMap();
+    }
+
+    private async Task OnMapTypeChanged(ChangeEventArgs e)
+    {
+        _mapType = e.Value?.ToString() ?? "hybrid";
+        await JS.InvokeVoidAsync("agronomyMap.setMapType", _mapType);
+    }
+
+    private async Task OnHeatmapToggled()
+    {
+        if (_showHeatmap)
+            await RenderHeatmap();
+        else
+            await RenderMap();
+    }
+
+    private async Task RenderHeatmap()
+    {
+        if (!_mapReady) return;
+
+        var points = FilteredAll.Select(f => new
+        {
+            lat = f.Properties.CenterLat,
+            lng = f.Properties.CenterLon,
+            weight = f.Properties.ElevationM,
+        }).ToArray();
+
+        await JS.InvokeVoidAsync("agronomyMap.renderHeatmap", (object)points);
+    }
+
+    [JSInvokable]
+    public async Task OnBlockClicked(string blockId, double lat, double lng)
+    {
+        _selectedBlock = _features.FirstOrDefault(f => f.Id == blockId);
+        _solarData = null;
+        _solarLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        _solarData = await SolarService.GetSolarDataAsync(lat, lng);
+        _solarLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CloseBlockDetail()
+    {
+        _selectedBlock = null;
+        _solarData = null;
     }
 
     private static string CropColor(string crop) =>
@@ -208,6 +382,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        _dotNetRef?.Dispose();
         try
         {
             await JS.InvokeVoidAsync("agronomyMap.dispose");
