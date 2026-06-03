@@ -5,18 +5,46 @@ window.agronomyMap = (function () {
     let infoWindow = null;
     let dotNetHelper = null;
 
+    function fail(message) {
+        return { ok: false, message };
+    }
+
     function loadGoogleMaps(apiKey) {
+        if (!apiKey) {
+            return Promise.reject(new Error(
+                'Google Maps API key is missing. Set GoogleMaps:ApiKey in appsettings.Development.json for local dev, or GOOGLE_MAPS_API_KEY in Netlify / GitHub Actions for production.'
+            ));
+        }
+
         if (window._googleMapsPromise) return window._googleMapsPromise;
 
-        window._googleMapsPromise = new Promise((resolve) => {
+        window._googleMapsPromise = new Promise((resolve, reject) => {
             if (window.google && window.google.maps) {
                 resolve();
                 return;
             }
-            window._initGoogleMaps = resolve;
+
+            const callbackName = '_initGoogleMaps';
+            let settled = false;
+
+            const finish = (error) => {
+                if (settled) return;
+                settled = true;
+                delete window[callbackName];
+                if (error) {
+                    window._googleMapsPromise = null;
+                    reject(error);
+                    return;
+                }
+                resolve();
+            };
+
+            window[callbackName] = () => finish(null);
+
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=visualization&callback=_initGoogleMaps`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=visualization&loading=async&callback=${callbackName}`;
             script.async = true;
+            script.onerror = () => finish(new Error('Failed to download the Google Maps JavaScript API.'));
             document.head.appendChild(script);
         });
 
@@ -25,24 +53,52 @@ window.agronomyMap = (function () {
 
     async function init(elementId, lat, lng, zoom, apiKey, dotNetRef) {
         const el = document.getElementById(elementId);
-        if (!el) return;
+        if (!el) {
+            return fail(`Map container "${elementId}" was not found in the DOM yet.`);
+        }
 
         dispose();
-
         dotNetHelper = dotNetRef || null;
 
-        await loadGoogleMaps(apiKey);
+        try {
+            await loadGoogleMaps(apiKey);
+        } catch (error) {
+            return fail(error.message || String(error));
+        }
 
-        map = new google.maps.Map(el, {
-            center: { lat, lng },
-            zoom,
-            mapTypeId: 'hybrid',
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: true,
+        return await new Promise((resolve) => {
+            let settled = false;
+            const done = (result) => {
+                if (settled) return;
+                settled = true;
+                resolve(result);
+            };
+
+            const priorAuthFailure = window.gm_authFailure;
+            window.gm_authFailure = () => {
+                done(fail(
+                    'Google Maps rejected this site URL or API key. In Google Cloud Console, add HTTP referrer restrictions for http://localhost:*/* and your deployed domain (for example https://agronomystudio.netlify.app/*), and enable Maps JavaScript API.'
+                ));
+                if (typeof priorAuthFailure === 'function') priorAuthFailure();
+            };
+
+            map = new google.maps.Map(el, {
+                center: { lat, lng },
+                zoom,
+                mapTypeId: 'hybrid',
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+            });
+
+            infoWindow = new google.maps.InfoWindow();
+            google.maps.event.addListenerOnce(map, 'tilesloaded', () => done({ ok: true }));
+            setTimeout(() => {
+                done(fail(
+                    'Google Maps did not finish loading. Confirm the API key, HTTP referrer restrictions, and that Maps JavaScript API is enabled.'
+                ));
+            }, 10000);
         });
-
-        infoWindow = new google.maps.InfoWindow();
     }
 
     function render(shapes) {

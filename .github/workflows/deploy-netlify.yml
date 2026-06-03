@@ -76,6 +76,18 @@ jobs:
       - name: Verify Blazor build output
         run: test -f release/wwwroot/_framework/blazor.boot.json
 
+      - name: Inject Google Maps API key
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+        run: |
+          if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
+            echo "GOOGLE_MAPS_API_KEY secret is not set; production GIS map will not load." >&2
+            exit 1
+          fi
+          sed -i 's/"ApiKey": ""/"ApiKey": "'"$GOOGLE_MAPS_API_KEY"'"/' release/wwwroot/appsettings.json
+          grep -q '"ApiKey": "' release/wwwroot/appsettings.json
+          grep -qv '"ApiKey": ""' release/wwwroot/appsettings.json
+
       - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

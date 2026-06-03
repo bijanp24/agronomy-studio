@@ -84,6 +84,16 @@
     width: 100%;
 }
 
+.map-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 420px;
+    padding: 24px;
+    color: var(--theme-danger, #dc2626);
+    background: color-mix(in srgb, var(--theme-danger, #dc2626) 8%, transparent);
+}
+
 .map-legend {
     display: flex;
     flex-wrap: wrap;
