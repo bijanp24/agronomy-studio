@@ -45,6 +45,11 @@ AddApiClient(ApiClients.Forecast, openMeteoApi);
 AddApiClient(ApiClients.Agronomy, agronomyApi);
 AddApiClient(ApiClients.AiSearch, aiSearchApi);
 
+builder.Services.AddHttpClient(ApiClients.AirQuality,
+    c => c.BaseAddress = new Uri("https://airquality.googleapis.com/"));
+builder.Services.AddHttpClient(ApiClients.Solar,
+    c => c.BaseAddress = new Uri("https://solar.googleapis.com/"));
+
 builder.Services.AddScoped<FieldIntelligenceService>();
 builder.Services.AddScoped<WeatherService>();
 builder.Services.AddScoped<QueryService>();
@@ -55,5 +60,7 @@ builder.Services.AddScoped<SpaceService>();
 builder.Services.AddScoped<WeatherForecastService>();
 builder.Services.AddScoped<AgronomyService>();
 builder.Services.AddScoped<AiSearchService>();
+builder.Services.AddScoped<AirQualityService>();
+builder.Services.AddScoped<SolarService>();
 
 await builder.Build().RunAsync();
