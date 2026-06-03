@@ -5,7 +5,8 @@
     export PATH="${DOTNET_ROOT}:${PATH}" && \
     dotnet --version && \
     dotnet publish AgronomyStudio.csproj -c Release -o release && \
-    test -f release/wwwroot/_framework/blazor.boot.json
+    test -f release/wwwroot/_framework/blazor.boot.json && \
+    sed -i "s/\"ApiKey\": \"\"/\"ApiKey\": \"$GOOGLE_MAPS_API_KEY\"/" release/wwwroot/appsettings.json
   '''
   publish = "release/wwwroot"
 
