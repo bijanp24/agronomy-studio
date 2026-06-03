@@ -58,16 +58,9 @@
 
         <div class="nav-section-label px-3">External Data</div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="economy">
-                <span class="bi bi-graph-up-arrow" aria-hidden="true"></span> Economy
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="space">
-                <span class="bi bi-stars" aria-hidden="true"></span> Space
-            </NavLink>
-        </div>
+        @* Economy (FRED) and Space (NASA) are hidden until their API keys are
+           configured — without keys they return 500 / fail CORS on load. *@
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="weather">
                 <span class="bi bi-cloud-sun" aria-hidden="true"></span> Weather

@@ -30,7 +30,7 @@ window.agronomyMap = (function () {
 
         layerGroup.clearLayers();
 
-        for (const shape of shapes) {
+        for (const shape of shapes || []) {
             if (!shape.coords || shape.coords.length === 0) {
                 continue;
             }
