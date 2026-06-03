@@ -93,7 +93,17 @@
     </div>
 
     <div class="studio-card map-card">
-        <div id="gis-map" class="map-container"></div>
+        @if (_mapError)
+        {
+            <div class="map-error">
+                <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+                @_mapErrorMessage
+            </div>
+        }
+        else
+        {
+            <div id="gis-map" class="map-container"></div>
+        }
         @if (!_showHeatmap)
         {
             <div class="map-legend">
@@ -228,6 +238,9 @@
     private bool _loading = true;
     private bool _hasError;
     private bool _mapReady;
+    private bool _mapInitializing;
+    private bool _mapError;
+    private string _mapErrorMessage = "";
 
     private AirQualityResult? _airQuality;
     private GeoJsonFeature? _selectedBlock;
@@ -274,12 +287,37 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_mapReady && !_loading && !_hasError)
+        if (_mapReady || _mapInitializing || _mapError || _loading || _hasError)
+            return;
+
+        _mapInitializing = true;
+
+        try
         {
             var apiKey = Configuration["GoogleMaps:ApiKey"] ?? "";
-            await JS.InvokeVoidAsync("agronomyMap.init", "gis-map", 36.7, -119.8, 9, apiKey, _dotNetRef);
+            var result = await JS.InvokeAsync<MapInitResult>(
+                "agronomyMap.init", "gis-map", 36.7, -119.8, 9, apiKey, _dotNetRef);
+
+            if (result is not { Ok: true })
+            {
+                _mapError = true;
+                _mapErrorMessage = result?.Message
+                    ?? "Google Maps failed to initialize. Check the browser console and API key configuration.";
+                return;
+            }
+
             _mapReady = true;
             await RenderMap();
+        }
+        catch (Exception ex)
+        {
+            _mapError = true;
+            _mapErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _mapInitializing = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -391,5 +429,11 @@
         {
             // The JS runtime may already be torn down during navigation.
         }
+    }
+
+    private sealed class MapInitResult
+    {
+        public bool Ok { get; set; }
+        public string? Message { get; set; }
     }
 }
