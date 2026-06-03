@@ -24,6 +24,9 @@ yarn-error.log
 !.env.example
 .netlify/
 
+# Local dev secrets (API keys — use Netlify env vars for production)
+wwwroot/appsettings.Development.json
+
 # IDEs and editors
 .idea/
 .project
