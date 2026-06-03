@@ -11,4 +11,6 @@ public static class ApiClients
     public const string Forecast = "open-meteo-api";
     public const string Agronomy = "agronomy-api";
     public const string AiSearch = "ai-search-api";
+    public const string AirQuality = "google-air-quality";
+    public const string Solar = "google-solar";
 }
