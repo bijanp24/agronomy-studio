@@ -1,4 +1,4 @@
-import { fetchJson, UpstreamError, type Logger } from './http';
+import { fetchJson, type Logger } from './http';
 import type { CimisStation, EvapotranspirationReading, GeoPoint } from './models';
 
 const CIMIS_BASE = 'https://et.water.ca.gov/api';
@@ -108,7 +108,10 @@ export interface CimisDataOptions {
 /** Query daily ETo + weather for a coordinate window, normalized to readings (newest last). */
 export async function getEtoHistory(point: GeoPoint, options: CimisDataOptions = {}): Promise<EvapotranspirationReading[]> {
   const appKey = options.appKey ?? getCimisAppKey();
-  if (!appKey) throw new UpstreamError('CIMIS_APP_KEY is not configured', 500, 'CIMIS', CIMIS_BASE);
+  if (!appKey) {
+    options.logger?.warn('CIMIS_APP_KEY not configured; skipping ETo history fetch');
+    return [];
+  }
 
   const startDate = options.startDate ?? isoDaysAgo(7);
   const endDate = options.endDate ?? isoDaysAgo(1);
@@ -148,7 +151,10 @@ export async function getCurrentEto(point: GeoPoint, options: CimisDataOptions =
 /** List CIMIS weather stations, normalized. */
 export async function getStations(options: CimisDataOptions = {}): Promise<CimisStation[]> {
   const appKey = options.appKey ?? getCimisAppKey();
-  if (!appKey) throw new UpstreamError('CIMIS_APP_KEY is not configured', 500, 'CIMIS', CIMIS_BASE);
+  if (!appKey) {
+    options.logger?.warn('CIMIS_APP_KEY not configured; skipping station list fetch');
+    return [];
+  }
 
   const url = `${CIMIS_BASE}/station?appKey=${encodeURIComponent(appKey)}`;
   const json = await fetchJson<CimisStationResponse>(url, {

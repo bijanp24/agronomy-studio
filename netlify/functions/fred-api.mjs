@@ -71,9 +71,19 @@ export async function handler(event) {
   if (pathname === '/api/indicators') {
     const apiKey = process.env.FRED_API_KEY;
     if (!apiKey) {
-      return sendJson(500, {
-        error: 'FRED_API_KEY is not configured. Add it under Site settings -> Environment variables.',
-      });
+      // Return static placeholder data so the Economy page renders while the key is pending.
+      const placeholder = INDICATORS.map(i => ({
+        id: i.id,
+        title: i.label,
+        units: '',
+        frequency: 'Monthly',
+        latest: null,
+        previous: null,
+        change: null,
+        observations: [],
+        _mock: true,
+      }));
+      return sendJson(200, { indicators: placeholder, _mock: true });
     }
 
     try {

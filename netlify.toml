@@ -75,6 +75,11 @@
   status = 200
 
 [[redirects]]
+  from = "/nasa-api/*"
+  to = "/.netlify/functions/nasa-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

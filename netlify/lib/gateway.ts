@@ -185,13 +185,14 @@ export async function buildIrrigationRecommendation(
   providers: GatewayProviders = activeProviders,
 ): Promise<IrrigationRecommendation> {
   const point: GeoPoint = { latitude: request.latitude, longitude: request.longitude };
-  const [etoReading, soil, crop, forecast] = await Promise.all([
-    providers.getEvapotranspiration(point, logger),
-    providers.getSoil(point, logger),
-    providers.getCropCoefficient(request.cropId, request.cropName, logger),
-    providers.getForecast(point, logger),
+  const [etoReading, soil, crop, forecastResult] = await Promise.all([
+    settle(logger, 'evapotranspiration', () => providers.getEvapotranspiration(point, logger)),
+    settle(logger, 'soil', () => providers.getSoil(point, logger)),
+    settle(logger, 'crop', () => providers.getCropCoefficient(request.cropId, request.cropName, logger)),
+    settle(logger, 'forecast', () => providers.getForecast(point, logger)),
   ]);
 
+  const forecast = forecastResult ?? [];
   const eto = request.etoOverride ?? etoReading?.eto ?? 0.2;
   const forecastRainIn = sumForecastRain(forecast);
   const heatRisk = hasHeatRisk(forecast, etoReading ?? undefined);
@@ -215,12 +216,13 @@ export async function buildSoilWaterBalance(
   logger: Logger,
   providers: GatewayProviders = activeProviders,
 ): Promise<SoilWaterBalance> {
-  const [soil, eto, forecast] = await Promise.all([
-    providers.getSoil(point, logger),
-    providers.getEvapotranspiration(point, logger),
-    providers.getForecast(point, logger),
+  const [soil, eto, forecastResult] = await Promise.all([
+    settle(logger, 'soil', () => providers.getSoil(point, logger)),
+    settle(logger, 'evapotranspiration', () => providers.getEvapotranspiration(point, logger)),
+    settle(logger, 'forecast', () => providers.getForecast(point, logger)),
   ]);
 
+  const forecast = forecastResult ?? [];
   const awc = soil?.availableWaterCapacity ?? 0.15;
   const rootZone = soil?.rootZoneDepthIn ?? 24;
   const totalAvailableWater = awc * rootZone;
@@ -248,13 +250,15 @@ export async function buildRiskSummary(
   logger: Logger,
   providers: GatewayProviders = activeProviders,
 ): Promise<RiskSummary> {
-  const [eto, forecast, soil, waterQuality] = await Promise.all([
-    providers.getEvapotranspiration(point, logger),
-    providers.getForecast(point, logger),
-    providers.getSoil(point, logger),
-    providers.getWaterQuality(point, logger),
+  const [eto, forecastResult, soil, waterQualityResult] = await Promise.all([
+    settle(logger, 'evapotranspiration', () => providers.getEvapotranspiration(point, logger)),
+    settle(logger, 'forecast', () => providers.getForecast(point, logger)),
+    settle(logger, 'soil', () => providers.getSoil(point, logger)),
+    settle(logger, 'waterQuality', () => providers.getWaterQuality(point, logger)),
   ]);
 
+  const forecast = forecastResult ?? [];
+  const waterQuality = waterQualityResult ?? [];
   const heatRisk = hasHeatRisk(forecast, eto ?? undefined);
   const forecastRain = sumForecastRain(forecast);
   const droughtStress = (eto?.eto ?? 0) > 0.3 && forecastRain < 0.1;
@@ -273,6 +277,19 @@ export async function buildRiskSummary(
 }
 
 // --- helpers ------------------------------------------------------------------
+
+/** Run a provider call, returning null (and logging a warning) on failure. */
+async function settle<T>(logger: Logger, provider: string, fn: () => Promise<T>): Promise<T | null> {
+  try {
+    return await fn();
+  } catch (err) {
+    logger.warn('gateway provider failed', {
+      provider,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
 
 async function safe<T>(
   key: string,

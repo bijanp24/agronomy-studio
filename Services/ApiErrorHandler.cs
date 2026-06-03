@@ -19,8 +19,11 @@ public sealed class ApiErrorHandler : DelegatingHandler
         CancellationToken cancellationToken)
     {
         var service = ServiceLabel(request.RequestUri?.ToString() ?? string.Empty);
+        // Correlation id is for our own client-side logs only. Do NOT add it as a
+        // request header: a custom header turns cross-origin GETs (NASA, Open-Meteo,
+        // and the dev mock servers) into CORS-preflighted requests those endpoints
+        // do not satisfy, which would break them.
         var correlationId = Guid.NewGuid().ToString("N")[..12];
-        request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
 
         var path = request.RequestUri?.PathAndQuery ?? string.Empty;
         _log.Info(service, $"{request.Method} {path}", correlationId);

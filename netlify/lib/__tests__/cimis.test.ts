@@ -65,10 +65,11 @@ describe('cimis normalization', () => {
     expect(reading?.eto).toBe(0.26);
   });
 
-  it('throws when no app key is configured', async () => {
+  it('returns empty array when no app key is configured', async () => {
     delete process.env.CIMIS_APP_KEY;
     delete process.env.CIMIS_APPKEY;
-    await expect(getEtoHistory({ latitude: 36, longitude: -119 })).rejects.toThrow(/CIMIS_APP_KEY/);
+    const result = await getEtoHistory({ latitude: 36, longitude: -119 });
+    expect(result).toEqual([]);
   });
 });
 

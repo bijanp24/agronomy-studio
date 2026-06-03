@@ -832,6 +832,103 @@ function createAiSearchApi() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// NASA open-data mock — mirrors the api.nasa.gov shape for APOD, Mars, NEO.
+// Canned static data so the Space page works without a real NASA API key.
+// ---------------------------------------------------------------------------
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+function createNasaApi() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost:4314');
+
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, OPTIONS',
+        'access-control-allow-headers': 'content-type',
+      });
+      response.end();
+      return;
+    }
+
+    if (url.pathname === '/planetary/apod') {
+      sendJson(response, 200, {
+        title: 'Central Valley from Space',
+        date: TODAY,
+        explanation:
+          'The San Joaquin Valley stretches across central California in this composite image. ' +
+          'Agricultural fields and irrigation canals form a patchwork of greens and tans, ' +
+          'reflecting the intensive cultivation that makes this region one of the most productive on Earth.',
+        url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/240px-PNG_transparency_demonstration_1.png',
+        media_type: 'image',
+        copyright: 'Mock Data',
+      });
+      return;
+    }
+
+    if (url.pathname.startsWith('/mars-photos/api/v1/rovers/') && url.pathname.endsWith('/latest_photos')) {
+      sendJson(response, 200, {
+        latest_photos: [
+          {
+            id: 1001,
+            img_src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/240px-PNG_transparency_demonstration_1.png',
+            earth_date: TODAY,
+            camera: { name: 'NAVCAM', full_name: 'Navigation Camera' },
+            rover: { name: 'Curiosity', status: 'active' },
+          },
+          {
+            id: 1002,
+            img_src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/240px-PNG_transparency_demonstration_1.png',
+            earth_date: TODAY,
+            camera: { name: 'FHAZ', full_name: 'Front Hazard Avoidance Camera' },
+            rover: { name: 'Curiosity', status: 'active' },
+          },
+        ],
+      });
+      return;
+    }
+
+    if (url.pathname === '/neo/rest/v1/feed') {
+      sendJson(response, 200, {
+        element_count: 2,
+        near_earth_objects: {
+          [TODAY]: [
+            {
+              name: '2026 AB1 (Mock)',
+              nasa_jpl_url: 'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html',
+              is_potentially_hazardous_asteroid: false,
+              close_approach_data: [
+                {
+                  close_approach_date: TODAY,
+                  miss_distance: { kilometers: '4823190.5' },
+                  relative_velocity: { kilometers_per_hour: '38420.7' },
+                },
+              ],
+            },
+            {
+              name: '2026 CD5 (Mock)',
+              nasa_jpl_url: 'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html',
+              is_potentially_hazardous_asteroid: false,
+              close_approach_data: [
+                {
+                  close_approach_date: TODAY,
+                  miss_distance: { kilometers: '7251830.2' },
+                  relative_velocity: { kilometers_per_hour: '51003.4' },
+                },
+              ],
+            },
+          ],
+        },
+      });
+      return;
+    }
+
+    notFound(response, url.pathname);
+  });
+}
+
 listen(createWeatherApi(), 4300, 'weather-intelligence');
 listen(createFieldApi(), 4302, 'field-intelligence');
 listen(createQueryApi(), 4304, 'query-intelligence');
@@ -839,3 +936,4 @@ listen(createFredApi(), 4306, 'fred-economic');
 listen(createDatagovApi(), 4308, 'datagov-catalog');
 listen(createAgronomyApi(), 4310, 'agronomy-gateway');
 listen(createAiSearchApi(), 4312, 'ai-agronomy-search');
+listen(createNasaApi(), 4314, 'NASA open APIs (mock)');

@@ -182,7 +182,7 @@
             popupHtml = PopupHtml(f),
         }).ToArray();
 
-        await JS.InvokeVoidAsync("agronomyMap.render", shapes);
+        await JS.InvokeVoidAsync("agronomyMap.render", (object)shapes);
     }
 
     private async Task OnZoneChanged(ChangeEventArgs e)
