@@ -1,0 +1,228 @@
+@page "/learn/terrain-flow"
+@using System.Globalization
+@inject DemoFieldData Demo
+
+<PageTitle>Terrain Flow · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Terrain Flow</h1>
+    <p class="page-sub">Spatial learning block · @_block.DifficultyLevel · @_field.Name</p>
+</div>
+
+<div class="block-grid">
+    <section class="studio-card block-section" aria-labelledby="concept-h">
+        <h2 id="concept-h" class="block-step"><span class="step-num">1</span> Concept</h2>
+        <p>@_block.Concept</p>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="formula-h">
+        <h2 id="formula-h" class="block-step"><span class="step-num">2</span> Formula</h2>
+        <pre class="formula">@_block.Formula</pre>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="map-h">
+        <h2 id="map-h" class="block-step"><span class="step-num">3</span> Map Layer</h2>
+        <p>@_block.Modes.MapView</p>
+        <div class="terrain-legend">
+            <span><span class="legend-swatch" style="background:hsl(210,15%,85%)"></span> Higher / drier</span>
+            <span><span class="legend-swatch" style="background:hsl(210,70%,55%)"></span> Lower / pooling</span>
+            <span><span class="legend-swatch" style="outline:2px solid var(--theme-info);outline-offset:-2px;background:transparent"></span> Sink cell</span>
+        </div>
+        <div class="terrain-grid" style="grid-template-columns:repeat(@_terrain.Cols, 1fr)"
+             role="img" aria-label="Demo terrain grid with flow-direction arrows; sink in the south-east corner">
+            @for (var r = 0; r < _terrain.Rows; r++)
+            {
+                for (var c = 0; c < _terrain.Cols; c++)
+                {
+                    var isSink = r == _flow.LowestRow && c == _flow.LowestCol;
+                    <div class="terrain-cell @(isSink ? "sink" : "")"
+                         style="background:@CellColor(_terrain.Elevations[r][c])"
+                         title="@CellTitle(r, c)">
+                        <span aria-hidden="true">@Arrow(_flow.Directions[r][c])</span>
+                    </div>
+                }
+            }
+        </div>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="sim-h">
+        <h2 id="sim-h" class="block-step"><span class="step-num">4</span> Simulation</h2>
+        <div class="metric-row">
+            <div class="metric">
+                <div class="metric-label">Max slope</div>
+                <div class="metric-value">@_slope.MaxSlopePercent.ToString("F1", Inv)%</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Mean slope</div>
+                <div class="metric-value">@_slope.MeanSlopePercent.ToString("F1", Inv)%</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Pooling zone</div>
+                <div class="metric-value">@_sinkLabel</div>
+                <div class="metric-sub">lowest elevation cell</div>
+            </div>
+        </div>
+        <ol class="sim-steps">
+            @foreach (var step in _block.Modes.SimulationSteps)
+            {
+                <li><strong>@step.Title</strong> — @step.Detail</li>
+            }
+        </ol>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="rec-h">
+        <h2 id="rec-h" class="block-step"><span class="step-num">5</span> Recommendation &amp; Check</h2>
+        <p class="recommendation">@_block.Recommendation</p>
+
+        @if (_block.Modes.Quiz is { } quiz)
+        {
+            <fieldset class="quiz">
+                <legend>@quiz.Prompt</legend>
+                @for (var i = 0; i < quiz.Options.Count; i++)
+                {
+                    var idx = i;
+                    <label class="quiz-option">
+                        <input type="radio" name="quiz-tf" value="@idx"
+                               checked="@(_selected == idx)"
+                               @onchange="() => _selected = idx" />
+                        <span>@quiz.Options[idx]</span>
+                    </label>
+                }
+                <button type="button" class="check-btn" @onclick="CheckAnswer"
+                        disabled="@(_selected < 0)">Check answer</button>
+
+                @if (_checked)
+                {
+                    <p role="status" class="quiz-result @(_correct ? "ok" : "bad")">
+                        <span class="bi @(_correct ? "bi-check-circle" : "bi-x-circle")" aria-hidden="true"></span>
+                        @(_correct ? "Correct. " : "Not quite. ")@quiz.Explanation
+                    </p>
+                }
+            </fieldset>
+        }
+    </section>
+</div>
+
+@code {
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
+
+    private DemoField _field = default!;
+    private TerrainGrid _terrain = default!;
+    private SlopeResult _slope = default!;
+    private FlowResult _flow = default!;
+    private LearningBlock _block = default!;
+    private string _sinkLabel = "";
+
+    private int _selected = -1;
+    private bool _checked;
+    private bool _correct;
+
+    private double _minElev;
+    private double _maxElev;
+
+    protected override void OnInitialized()
+    {
+        _field = Demo.GetDemoField();
+        _terrain = _field.Terrain;
+        _slope = SpatialCalculations.CalculateSlope(_terrain);
+        _flow = SpatialCalculations.EstimateFlowDirection(_terrain);
+
+        _minElev = double.MaxValue;
+        _maxElev = double.MinValue;
+        foreach (var row in _terrain.Elevations)
+        {
+            foreach (var v in row)
+            {
+                _minElev = Math.Min(_minElev, v);
+                _maxElev = Math.Max(_maxElev, v);
+            }
+        }
+
+        _sinkLabel = CornerLabel(_flow.LowestRow, _flow.LowestCol, _terrain.Rows, _terrain.Cols);
+
+        _block = new LearningBlock
+        {
+            Id = "terrain-flow",
+            Title = "Terrain Flow",
+            Concept = "Water moves downhill along the steepest path. Mapping slope and "
+                + "flow direction shows where runoff concentrates and where water pools, "
+                + "which drives drainage, erosion, and waterlogging risk.",
+            Formula = "Slope:           slope% = √((Δz/Δx)² + (Δz/Δy)²) × 100\n"
+                + "Flow (D8):       flow → steepest-descent neighbour",
+            DifficultyLevel = DifficultyLevel.Intermediate,
+            RequiredLayers = new List<FieldLayerType> { FieldLayerType.Terrain },
+            Recommendation = $"The {_sinkLabel} corner is the lowest point and collects "
+                + "flow, so it is the most likely waterlogging zone. Consider drainage or "
+                + "adjusted irrigation timing there.",
+            Modes = new LearningModeContent
+            {
+                BeginnerExplanation = "We look at the elevation of each part of the field "
+                    + "and follow the water downhill.",
+                FormulaView = "Gradient magnitude for slope; D8 steepest descent for flow.",
+                MapView = "Each cell is shaded by elevation; arrows show the steepest "
+                    + "downhill direction. The outlined cell is the pooling sink.",
+                SimulationSteps = new List<SimulationStep>
+                {
+                    new() { Title = "Slope", Detail = "Compute the elevation gradient per cell." },
+                    new() { Title = "Flow", Detail = "Point each cell at its steepest downhill neighbour." },
+                    new() { Title = "Sink", Detail = "Find the lowest cell where water concentrates." }
+                },
+                Quiz = new QuizQuestion
+                {
+                    Prompt = "Which corner of this field is most likely to waterlog?",
+                    Options = new List<string> { "North-west", "North-east", "South-west", "South-east" },
+                    CorrectIndex = 3,
+                    Explanation = "Elevation falls toward the south-east, so flow concentrates "
+                        + "in the south-east sink."
+                }
+            }
+        };
+    }
+
+    private void CheckAnswer()
+    {
+        if (_selected < 0 || _block.Modes.Quiz is null)
+        {
+            return;
+        }
+
+        _checked = true;
+        _correct = _selected == _block.Modes.Quiz.CorrectIndex;
+    }
+
+    private string CellTitle(int r, int c)
+    {
+        var elev = _terrain.Elevations[r][c].ToString("F1", Inv);
+        var slope = _slope.SlopePercent[r][c].ToString("F1", Inv);
+        return $"{elev} m, slope {slope}%";
+    }
+
+    private string CellColor(double elevation)
+    {
+        var span = _maxElev - _minElev;
+        var n = span <= 0 ? 1 : (elevation - _minElev) / span;
+        var sat = 15 + ((1 - n) * 55);
+        var light = 85 - ((1 - n) * 30);
+        return string.Create(Inv, $"hsl(210,{sat:F0}%,{light:F0}%)");
+    }
+
+    private static string Arrow(FlowDirection d) => d switch
+    {
+        FlowDirection.North => "↑",
+        FlowDirection.NorthEast => "↗",
+        FlowDirection.East => "→",
+        FlowDirection.SouthEast => "↘",
+        FlowDirection.South => "↓",
+        FlowDirection.SouthWest => "↙",
+        FlowDirection.West => "←",
+        FlowDirection.NorthWest => "↖",
+        _ => "•"
+    };
+
+    private static string CornerLabel(int row, int col, int rows, int cols)
+    {
+        var ns = row <= (rows - 1) / 2.0 ? "north" : "south";
+        var ew = col <= (cols - 1) / 2.0 ? "west" : "east";
+        return $"{ns}-{ew}";
+    }
+}

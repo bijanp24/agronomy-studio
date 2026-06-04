@@ -62,5 +62,6 @@ builder.Services.AddScoped<AgronomyService>();
 builder.Services.AddScoped<AiSearchService>();
 builder.Services.AddScoped<AirQualityService>();
 builder.Services.AddScoped<SolarService>();
+builder.Services.AddScoped<DemoFieldData>();
 
 await builder.Build().RunAsync();
