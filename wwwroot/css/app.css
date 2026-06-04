@@ -265,3 +265,205 @@ h2 {
         font-weight: 600;
         cursor: pointer;
     }
+
+/* ---- Spatial learning blocks ---- */
+.block-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.block-section {
+    padding: 16px 18px;
+}
+
+.block-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    margin: 0 0 10px;
+    color: var(--theme-fg);
+}
+
+.step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--theme-primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    flex: none;
+}
+
+.formula {
+    background: var(--theme-surface-hover);
+    border: 1px solid var(--theme-border-subtle);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    margin: 0;
+    color: var(--theme-fg);
+}
+
+.field-map {
+    width: 100%;
+    max-width: 360px;
+    height: auto;
+    background: var(--theme-surface-hover);
+    border: 1px solid var(--theme-border-subtle);
+    border-radius: 6px;
+}
+
+.boundary-shape {
+    fill: var(--theme-primary-soft);
+    stroke: var(--theme-primary);
+    stroke-width: 2;
+}
+
+.metric-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.metric {
+    flex: 1 1 140px;
+    background: var(--theme-surface-hover);
+    border: 1px solid var(--theme-border-subtle);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.metric-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--theme-muted);
+}
+
+.metric-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--theme-primary);
+}
+
+.metric-sub {
+    font-size: 12px;
+    color: var(--theme-muted);
+}
+
+.sim-steps {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--theme-fg);
+}
+
+    .sim-steps li {
+        margin-bottom: 4px;
+    }
+
+.recommendation {
+    color: var(--theme-fg);
+}
+
+.quiz {
+    border: 1px solid var(--theme-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 8px;
+}
+
+    .quiz legend {
+        font-weight: 600;
+        padding: 0 6px;
+    }
+
+.quiz-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    cursor: pointer;
+}
+
+.check-btn {
+    margin-top: 10px;
+    background: var(--theme-primary);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .check-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+.quiz-result {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+    .quiz-result.ok {
+        color: var(--theme-success);
+    }
+
+    .quiz-result.bad {
+        color: var(--theme-danger);
+    }
+
+/* Terrain grid */
+.terrain-grid {
+    display: grid;
+    gap: 2px;
+    max-width: 360px;
+    margin-bottom: 12px;
+}
+
+.terrain-cell {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    font-size: 15px;
+    color: #1f2933;
+}
+
+    .terrain-cell.sink {
+        outline: 2px solid var(--theme-info);
+        outline-offset: -2px;
+        font-weight: 700;
+    }
+
+.terrain-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--theme-muted);
+    margin-bottom: 8px;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    vertical-align: -2px;
+    margin-right: 4px;
+}

@@ -1,0 +1,195 @@
+@page "/learn/boundary-area"
+@using System.Globalization
+@using System.Text
+@inject DemoFieldData Demo
+
+<PageTitle>Boundary &amp; Area · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Boundary and Area</h1>
+    <p class="page-sub">Spatial learning block · @_block.DifficultyLevel · @_field.Name</p>
+</div>
+
+<div class="block-grid">
+    <section class="studio-card block-section" aria-labelledby="concept-h">
+        <h2 id="concept-h" class="block-step"><span class="step-num">1</span> Concept</h2>
+        <p>@_block.Concept</p>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="formula-h">
+        <h2 id="formula-h" class="block-step"><span class="step-num">2</span> Formula</h2>
+        <pre class="formula">@_block.Formula</pre>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="map-h">
+        <h2 id="map-h" class="block-step"><span class="step-num">3</span> Map Layer</h2>
+        <p>@_block.Modes.MapView</p>
+        <svg class="field-map" viewBox="0 0 320 240" role="img"
+             aria-label="Demo field boundary polygon">
+            <polygon points="@_polygonPoints" class="boundary-shape" />
+        </svg>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="sim-h">
+        <h2 id="sim-h" class="block-step"><span class="step-num">4</span> Simulation</h2>
+        <div class="metric-row">
+            <div class="metric">
+                <div class="metric-label">Area</div>
+                <div class="metric-value">@_areaHectares.ToString("F2", Inv) ha</div>
+                <div class="metric-sub">@_areaAcres.ToString("F1", Inv) ac · @_areaSqMeters.ToString("N0", Inv) m²</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Perimeter</div>
+                <div class="metric-value">@_perimeterMeters.ToString("N0", Inv) m</div>
+                <div class="metric-sub">@(_perimeterMeters / 1000).ToString("F2", Inv) km</div>
+            </div>
+        </div>
+        <ol class="sim-steps">
+            @foreach (var step in _block.Modes.SimulationSteps)
+            {
+                <li><strong>@step.Title</strong> — @step.Detail</li>
+            }
+        </ol>
+    </section>
+
+    <section class="studio-card block-section" aria-labelledby="rec-h">
+        <h2 id="rec-h" class="block-step"><span class="step-num">5</span> Recommendation &amp; Check</h2>
+        <p class="recommendation">@_block.Recommendation</p>
+
+        @if (_block.Modes.Quiz is { } quiz)
+        {
+            <fieldset class="quiz">
+                <legend>@quiz.Prompt</legend>
+                @for (var i = 0; i < quiz.Options.Count; i++)
+                {
+                    var idx = i;
+                    <label class="quiz-option">
+                        <input type="radio" name="quiz-ba" value="@idx"
+                               checked="@(_selected == idx)"
+                               @onchange="() => _selected = idx" />
+                        <span>@quiz.Options[idx]</span>
+                    </label>
+                }
+                <button type="button" class="check-btn" @onclick="CheckAnswer"
+                        disabled="@(_selected < 0)">Check answer</button>
+
+                @if (_checked)
+                {
+                    <p role="status" class="quiz-result @(_correct ? "ok" : "bad")">
+                        <span class="bi @(_correct ? "bi-check-circle" : "bi-x-circle")" aria-hidden="true"></span>
+                        @(_correct ? "Correct. " : "Not quite. ")@quiz.Explanation
+                    </p>
+                }
+            </fieldset>
+        }
+    </section>
+</div>
+
+@code {
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
+
+    private DemoField _field = default!;
+    private LearningBlock _block = default!;
+
+    private double _areaSqMeters;
+    private double _areaHectares;
+    private double _areaAcres;
+    private double _perimeterMeters;
+    private string _polygonPoints = "";
+
+    private int _selected = -1;
+    private bool _checked;
+    private bool _correct;
+
+    protected override void OnInitialized()
+    {
+        _field = Demo.GetDemoField();
+
+        _areaSqMeters = SpatialCalculations.CalculateAreaSquareMeters(_field.BoundaryRing);
+        _areaHectares = SpatialCalculations.CalculateAreaHectares(_field.BoundaryRing);
+        _areaAcres = SpatialCalculations.HectaresToAcres(_areaHectares);
+        _perimeterMeters = SpatialCalculations.CalculatePerimeterMeters(_field.BoundaryRing);
+        _polygonPoints = BuildPolygon(_field.BoundaryRing);
+
+        _block = new LearningBlock
+        {
+            Id = "boundary-area",
+            Title = "Boundary and Area",
+            Concept = "A field's boundary defines how much land you manage. Area drives "
+                + "inputs like seed, water, and fertilizer; perimeter drives fencing, "
+                + "buffers, and edge effects.",
+            Formula = "Area (shoelace):  A = ½ |Σ (xᵢ·yᵢ₊₁ − xᵢ₊₁·yᵢ)|\n"
+                + "Perimeter:        P = Σ √(Δx² + Δy²)",
+            DifficultyLevel = DifficultyLevel.Beginner,
+            RequiredLayers = new List<FieldLayerType> { FieldLayerType.Boundary },
+            Recommendation = "Use area for input planning and perimeter for buffer and "
+                + "edge management. Always confirm units before ordering inputs.",
+            Modes = new LearningModeContent
+            {
+                BeginnerExplanation = "We measure the shape of the field, then turn that "
+                    + "shape into an area and a perimeter.",
+                FormulaView = "Shoelace area and summed edge lengths over the boundary ring.",
+                MapView = "The boundary polygon is projected to local metres and shaded.",
+                SimulationSteps = new List<SimulationStep>
+                {
+                    new() { Title = "Project", Detail = "Convert lon/lat vertices to local metres." },
+                    new() { Title = "Area", Detail = "Apply the shoelace formula to the ring." },
+                    new() { Title = "Perimeter", Detail = "Sum the straight-line edge lengths." }
+                },
+                Quiz = new QuizQuestion
+                {
+                    Prompt = $"This field is about {_areaHectares.ToString("F1", Inv)} ha. "
+                        + "Roughly how many acres is that? (1 ha ≈ 2.47 ac)",
+                    Options = new List<string> { "≈ 5 ac", "≈ 12 ac", "≈ 30 ac", "≈ 120 ac" },
+                    CorrectIndex = 2,
+                    Explanation = $"{_areaHectares.ToString("F1", Inv)} ha × 2.47 ≈ "
+                        + $"{_areaAcres.ToString("F0", Inv)} ac."
+                }
+            }
+        };
+    }
+
+    private void CheckAnswer()
+    {
+        if (_selected < 0 || _block.Modes.Quiz is null)
+        {
+            return;
+        }
+
+        _checked = true;
+        _correct = _selected == _block.Modes.Quiz.CorrectIndex;
+    }
+
+    private static string BuildPolygon(IReadOnlyList<GeoPoint> ring)
+    {
+        if (ring.Count == 0)
+        {
+            return "";
+        }
+
+        var minLon = ring.Min(p => p.Longitude);
+        var maxLon = ring.Max(p => p.Longitude);
+        var minLat = ring.Min(p => p.Latitude);
+        var maxLat = ring.Max(p => p.Latitude);
+
+        var spanLon = maxLon - minLon;
+        var spanLat = maxLat - minLat;
+        spanLon = spanLon == 0 ? 1 : spanLon;
+        spanLat = spanLat == 0 ? 1 : spanLat;
+
+        const double pad = 20;
+        const double w = 320 - (2 * pad);
+        const double h = 240 - (2 * pad);
+
+        var sb = new StringBuilder();
+        foreach (var p in ring)
+        {
+            var x = pad + ((p.Longitude - minLon) / spanLon * w);
+            // Flip Y so north is at the top of the SVG.
+            var y = pad + ((1 - ((p.Latitude - minLat) / spanLat)) * h);
+            sb.Append(x.ToString("F1", Inv)).Append(',').Append(y.ToString("F1", Inv)).Append(' ');
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+}
