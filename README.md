@@ -7,7 +7,7 @@ A Blazor WebAssembly dashboard for precision agriculture — combining field int
 - **Dashboard** — At-a-glance stress scores, predicted yields, and limiting factors across all fields.
 - **Fields** — Per-field soil tests, field operations, nutrient balances, and yield predictions.
 - **Entropy** — Atmospheric entropy readings derived from live weather data (temperature, humidity, UV, wind, precipitation), with coin/dice outcomes and a history sparkline.
-- **GIS Blocks** — Interactive Leaflet map displaying field blocks with soil type, elevation, irrigation zone, and crop overlays.
+- **GIS Blocks** — Interactive Google Maps display showing field blocks with soil type, elevation, irrigation zone, and crop overlays, plus air quality and solar data.
 - **Query** — Natural-language questions answered by mock / OpenAI / Gemini providers, with SQL preview and local history.
 - **Agronomy** — Location-based irrigation guidance combining reference ET (CIMIS), soil water capacity (NRCS SSURGO), crop coefficients (WUCOLS), and the Open-Meteo forecast, with soil-water balance and risk summaries.
 - **Ask** — Plain-English agronomy questions routed (via a deterministic mock NLU) to the agronomy gateway, with source attribution.
@@ -39,7 +39,7 @@ gateway the frontend calls. See [docs/api-source-inventory.md](docs/api-source-i
 |-------|------------|
 | Framework | Blazor WebAssembly (.NET 8, standalone) |
 | Styling | Default Blazor theme + Bootstrap, scoped CSS |
-| Mapping | Leaflet (via JS interop) |
+| Mapping | Google Maps Platform (via JS interop) |
 | Backends | Netlify functions (prod) / Node mock servers (dev) |
 | Package Manager | NuGet (dotnet) |
 
@@ -125,7 +125,7 @@ GEMINI_API_KEY=AIza... node tools/mock-apis.mjs
 ├── wwwroot/
 │   ├── index.html
 │   ├── css/app.css         # Theme tokens + shared styles
-│   ├── js/interop.js       # Leaflet interop
+│   ├── js/interop.js       # Google Maps interop
 │   └── appsettings*.json   # API base URLs per environment
 ├── netlify/functions/      # Production API mocks
 └── tools/mock-apis.mjs     # Local dev backends
