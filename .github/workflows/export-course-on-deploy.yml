@@ -1,0 +1,30 @@
+name: Export Course on Deploy
+
+# On deploy (push to master), ask the LLM Academy to draft a course from this
+# repo's seed material (docs/lessons/next-course.md, or the deploy diff).
+# See: https://github.com/bijanp24/LLM-Workflow/tree/master/automation
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-course:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # need HEAD~1 for the diff fallback
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Export course to LLM Academy
+        env:
+          ACADEMY_DISPATCH_TOKEN: ${{ secrets.ACADEMY_DISPATCH_TOKEN }}
+          CONTENT_REPO: bijanp24/LLM-Workflow
+        run: node .github/scripts/export-course.mjs
