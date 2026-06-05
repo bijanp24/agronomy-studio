@@ -6,6 +6,8 @@ name: Export Course on Deploy
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - '.github/**' # CI/infra-only commits shouldn't spawn a course
   workflow_dispatch:
 
 permissions:
@@ -15,13 +17,13 @@ jobs:
   export-course:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 2 # need HEAD~1 for the diff fallback
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Export course to LLM Academy
         env:
