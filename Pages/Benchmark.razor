@@ -1,0 +1,171 @@
+@page "/benchmark"
+@using System.Globalization
+@inject MlService MlService
+@inject FieldIntelligenceService FieldService
+
+<PageTitle>Peer Benchmark · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Peer Benchmark</h1>
+    <p class="page-sub">Compare fields against similar operations using k-means cohort clustering and within-cohort percentile ranking</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_error is not null)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        @_error
+    </div>
+}
+
+@if (!_loading && _error is null)
+{
+    <div class="ml-disclaimer studio-card">
+        <span class="bi bi-info-circle" aria-hidden="true"></span>
+        <span><strong>ML-derived cohort assignment.</strong> Clusters are identified by k-means over agronomic input features. Percentile ranking is within cohort only — not across all crops.</span>
+    </div>
+
+    <div class="studio-card field-selector-card">
+        <label class="selector-label">Field &amp; season</label>
+        <div class="selector-row">
+            <select class="studio-select" @onchange="OnFieldChanged">
+                @foreach (var f in _fields)
+                {
+                    <option value="@f.Id|@f.Crop">@f.Name — @f.Crop</option>
+                }
+            </select>
+            <select class="studio-select" @bind="_cropYear">
+                @for (int y = 2026; y >= 2022; y--) { <option value="@y">@y</option> }
+            </select>
+            <button class="btn-primary" @onclick="RunBenchmark" disabled="@_running">
+                @(_running ? "Comparing…" : "Compare")
+            </button>
+        </div>
+    </div>
+
+    @if (_result is not null)
+    {
+        <div class="bench-hero studio-card">
+            <div class="percentile-display">
+                <div class="percentile-ring">
+                    <svg viewBox="0 0 120 120" class="percentile-svg">
+                        <circle cx="60" cy="60" r="50" class="ring-bg" />
+                        <circle cx="60" cy="60" r="50" class="ring-fill"
+                                stroke-dasharray="@(RingDash) @(314 - RingDash)"
+                                stroke-dashoffset="78.5" />
+                    </svg>
+                    <span class="percentile-number">@_result.PercentileRank.ToString("F0")<span class="percentile-th">th</span></span>
+                </div>
+                <div class="percentile-meta">
+                    <p class="percentile-label">Percentile within cohort</p>
+                    <p class="cohort-name">@_result.ClusterName</p>
+                    <p class="cohort-size">@_result.CohortSize comparable fields</p>
+                </div>
+            </div>
+            <div class="bench-yield-kpi">
+                <div class="kpi-value">@YieldTonnes(_result.YieldKgHa) t/ha</div>
+                <div class="kpi-label">Predicted yield (this field)</div>
+            </div>
+        </div>
+
+        <!-- All cohorts -->
+        @if (_clusters.Count > 0)
+        {
+            <h2 class="section-title">Cohort Map</h2>
+            <div class="studio-card">
+                <div class="cluster-grid">
+                    @foreach (var c in _clusters)
+                    {
+                        <div class="cluster-chip @(c.ClusterLabel == _result.ClusterLabel ? "cluster-active" : "")">
+                            <span class="cluster-dot"></span>
+                            <span class="cluster-name-text">@c.ClusterName</span>
+                            @if (c.ClusterLabel == _result.ClusterLabel)
+                            {
+                                <span class="cluster-you-badge">This field</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <h2 class="section-title">Explanation</h2>
+        <div class="studio-card explanation-card">
+            <p class="explanation-text">@_result.Explanation</p>
+            <p class="disclaimer-text"><em>@_result.Disclaimer</em></p>
+        </div>
+    }
+}
+
+@code {
+    private List<Field> _fields = new();
+    private List<MlClusterInfo> _clusters = new();
+    private string _selectedFieldId = "";
+    private string _selectedCrop = "almond";
+    private int _cropYear = 2026;
+    private bool _loading = true;
+    private bool _running;
+    private string? _error;
+    private MlBenchmarkResult? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var fieldsTask = FieldService.GetFieldsAsync();
+            var clustersTask = MlService.GetClustersAsync();
+            await Task.WhenAll(fieldsTask, clustersTask);
+
+            _fields = fieldsTask.Result?.Fields ?? new();
+            _clusters = clustersTask.Result?.Clusters ?? new();
+
+            if (_fields.Count > 0)
+                _selectedFieldId = _fields[0].Id;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load data: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnFieldChanged(ChangeEventArgs e)
+    {
+        var parts = (e.Value?.ToString() ?? "").Split('|');
+        _selectedFieldId = parts.Length > 0 ? parts[0] : "";
+        _selectedCrop = parts.Length > 1 ? parts[1] : "almond";
+    }
+
+    private async Task RunBenchmark()
+    {
+        if (string.IsNullOrEmpty(_selectedFieldId)) return;
+        _running = true;
+        _error = null;
+        try
+        {
+            _result = await MlService.BenchmarkAsync(_selectedFieldId, _selectedCrop, _cropYear);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Benchmark failed: {ex.Message}";
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+
+    private static string YieldTonnes(double kgHa) =>
+        (kgHa / 1000).ToString("F2", CultureInfo.InvariantCulture);
+
+    private double RingDash =>
+        _result is null ? 0 : Math.Round(_result.PercentileRank / 100.0 * 314.0, 1);
+}

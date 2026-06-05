@@ -1,0 +1,190 @@
+@page "/optimizer"
+@using System.Globalization
+@inject MlService MlService
+@inject FieldIntelligenceService FieldService
+
+<PageTitle>Input Optimizer · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Input Optimizer</h1>
+    <p class="page-sub">Optimal irrigation and fertilizer rates from constrained search over the trained yield model</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading"></div>
+}
+
+@if (_error is not null)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        @_error
+    </div>
+}
+
+@if (!_loading && _error is null)
+{
+    <div class="ml-disclaimer studio-card">
+        <span class="bi bi-info-circle" aria-hidden="true"></span>
+        <span><strong>ML-derived recommendations.</strong> Optimal rates are found by grid search over the trained yield model. All projections are model estimates — validate against local conditions.</span>
+    </div>
+
+    <div class="studio-card field-selector-card">
+        <label class="selector-label">Configure optimization</label>
+        <div class="selector-row">
+            <select class="studio-select" @onchange="OnFieldChanged">
+                @foreach (var f in _fields)
+                {
+                    <option value="@f.Id|@f.Crop">@f.Name — @f.Crop</option>
+                }
+            </select>
+            <select class="studio-select" @bind="_cropYear">
+                @for (int y = 2026; y >= 2022; y--) { <option value="@y">@y</option> }
+            </select>
+            <button class="btn-primary" @onclick="RunOptimization" disabled="@_running">
+                @(_running ? "Optimizing…" : "Run Optimizer")
+            </button>
+        </div>
+    </div>
+
+    @if (_result is not null)
+    {
+        <div class="opt-grid">
+            <!-- Irrigation card -->
+            <div class="studio-card opt-card">
+                <div class="opt-icon bi bi-droplet-half" aria-hidden="true"></div>
+                <h3 class="opt-title">Irrigation</h3>
+                <div class="opt-comparison">
+                    <div class="opt-current">
+                        <span class="opt-num">@_result.CurrentIrrigationIn.ToString("F1") in</span>
+                        <span class="opt-sub">Current</span>
+                    </div>
+                    <div class="opt-arrow bi bi-arrow-right" aria-hidden="true"></div>
+                    <div class="opt-rec">
+                        <span class="opt-num opt-rec-num">@_result.RecIrrigationIn.ToString("F1") in</span>
+                        <span class="opt-sub">Recommended</span>
+                    </div>
+                </div>
+                <div class="opt-delta @DeltaClass(_result.IrrigationDeltaIn)">
+                    @DeltaStr(_result.IrrigationDeltaIn, "in")
+                </div>
+            </div>
+
+            <!-- Nitrogen card -->
+            <div class="studio-card opt-card">
+                <div class="opt-icon bi bi-moisture" aria-hidden="true"></div>
+                <h3 class="opt-title">Nitrogen</h3>
+                <div class="opt-comparison">
+                    <div class="opt-current">
+                        <span class="opt-num">@_result.CurrentNitrogenLbAc.ToString("F0") lb/ac</span>
+                        <span class="opt-sub">Current</span>
+                    </div>
+                    <div class="opt-arrow bi bi-arrow-right" aria-hidden="true"></div>
+                    <div class="opt-rec">
+                        <span class="opt-num opt-rec-num">@_result.RecNitrogenLbAc.ToString("F0") lb/ac</span>
+                        <span class="opt-sub">Recommended</span>
+                    </div>
+                </div>
+                <div class="opt-delta @DeltaClass(_result.NitrogenDeltaLbAc)">
+                    @DeltaStr(_result.NitrogenDeltaLbAc, "lb/ac")
+                </div>
+            </div>
+
+            <!-- Yield gain card -->
+            <div class="studio-card opt-card opt-yield-card">
+                <div class="opt-icon bi bi-graph-up-arrow" aria-hidden="true"></div>
+                <h3 class="opt-title">Projected Yield</h3>
+                <div class="opt-comparison">
+                    <div class="opt-current">
+                        <span class="opt-num">@YieldTonnes(_result.BaselineYieldKgHa) t/ha</span>
+                        <span class="opt-sub">Baseline</span>
+                    </div>
+                    <div class="opt-arrow bi bi-arrow-right" aria-hidden="true"></div>
+                    <div class="opt-rec">
+                        <span class="opt-num opt-rec-num">@YieldTonnes(_result.ExpectedYieldKgHa) t/ha</span>
+                        <span class="opt-sub">Optimized</span>
+                    </div>
+                </div>
+                <div class="opt-gain">
+                    +@_result.ExpectedYieldGainPct.ToString("F1", CultureInfo.InvariantCulture)% expected gain
+                    <span class="conf-chip conf-@_result.Confidence.ToLower() ml-conf">@_result.Confidence</span>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Explanation</h2>
+        <div class="studio-card explanation-card">
+            <p class="explanation-text">@_result.Explanation</p>
+            <p class="disclaimer-text"><em>@_result.Disclaimer</em></p>
+        </div>
+    }
+}
+
+@code {
+    private List<Field> _fields = new();
+    private string _selectedFieldId = "";
+    private string _selectedCrop = "almond";
+    private int _cropYear = 2026;
+    private bool _loading = true;
+    private bool _running;
+    private string? _error;
+    private MlOptimizationResult? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await FieldService.GetFieldsAsync();
+            _fields = resp?.Fields ?? new();
+            if (_fields.Count > 0)
+            {
+                _selectedFieldId = _fields[0].Id;
+                _selectedCrop = "almond";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load fields: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnFieldChanged(ChangeEventArgs e)
+    {
+        var parts = (e.Value?.ToString() ?? "").Split('|');
+        _selectedFieldId = parts.Length > 0 ? parts[0] : "";
+        _selectedCrop = parts.Length > 1 ? parts[1] : "almond";
+    }
+
+    private async Task RunOptimization()
+    {
+        if (string.IsNullOrEmpty(_selectedFieldId)) return;
+        _running = true;
+        _error = null;
+        try
+        {
+            _result = await MlService.OptimizeInputsAsync(_selectedFieldId, _selectedCrop, _cropYear);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Optimization failed: {ex.Message}";
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+
+    private static string YieldTonnes(double kgHa) =>
+        (kgHa / 1000).ToString("F2", CultureInfo.InvariantCulture);
+
+    private static string DeltaClass(double delta) =>
+        delta > 0.1 ? "opt-delta-up" : delta < -0.1 ? "opt-delta-down" : "opt-delta-neutral";
+
+    private static string DeltaStr(double delta, string unit) =>
+        $"{(delta >= 0 ? "+" : "")}{delta:F1} {unit} vs current";
+}
