@@ -76,6 +76,21 @@
   status = 200
 
 [[redirects]]
+  from = "/spatial-api/*"
+  to = "/.netlify/functions/spatial-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/transfer-api/*"
+  to = "/.netlify/functions/transfer-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/ai-orchestration-api/*"
+  to = "/.netlify/functions/ai-orchestration-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/nasa-api/*"
   to = "/.netlify/functions/nasa-api/:splat"
   status = 200

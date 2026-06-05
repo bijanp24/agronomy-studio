@@ -13,4 +13,6 @@ public static class ApiClients
     public const string AiSearch = "ai-search-api";
     public const string AirQuality = "google-air-quality";
     public const string Solar = "google-solar";
+    public const string Spatial = "spatial-api";
+    public const string Transfer = "transfer-api";
 }

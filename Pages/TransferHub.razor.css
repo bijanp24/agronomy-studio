@@ -1,0 +1,328 @@
+.step-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.step-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.1rem;
+    border: none;
+    border-right: 1px solid var(--theme-border, #e5e7eb);
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--theme-muted, #6b7280);
+    transition: background 0.12s;
+}
+
+.step-tab:last-child {
+    border-right: none;
+}
+
+.step-tab--active {
+    background: #eff6ff;
+    color: var(--theme-accent, #2563eb);
+    font-weight: 700;
+}
+
+.step-tab--done {
+    color: #15803d;
+}
+
+.step-tab:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: var(--theme-border, #e5e7eb);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.step-tab--active .step-number {
+    background: var(--theme-accent, #2563eb);
+    color: #fff;
+}
+
+/* Source grid */
+.source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.source-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding: 1rem;
+    border: 2px solid var(--theme-border, #e5e7eb);
+    border-radius: 10px;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.12s;
+}
+
+.source-card:hover { border-color: var(--theme-accent, #2563eb); }
+.source-card--active { border-color: var(--theme-accent, #2563eb); background: #eff6ff; }
+
+.source-icon { font-size: 1.6rem; }
+.source-desc { font-size: 0.78rem; color: var(--theme-muted, #6b7280); }
+
+/* Upload area */
+.upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.upload-hint {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--theme-muted, #6b7280);
+}
+
+.csv-textarea {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.82rem;
+    min-height: 180px;
+    padding: 0.65rem;
+    border: 1px solid var(--theme-border, #d1d5db);
+    border-radius: 6px;
+    resize: vertical;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.upload-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.error-banner {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #fee2e2;
+    color: #b91c1c;
+    border-radius: 6px;
+    font-size: 0.88rem;
+}
+
+/* KPIs */
+.kpi-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.kpi-card {
+    flex: 1 1 120px;
+    text-align: center;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--theme-accent, #2563eb);
+}
+
+.kpi-label {
+    font-size: 0.78rem;
+    color: var(--theme-muted, #6b7280);
+    margin-top: 0.15rem;
+}
+
+.warn-kpi .kpi-value { color: #d97706; }
+
+/* Table */
+.table-scroll {
+    overflow-x: auto;
+    margin-top: 0.5rem;
+}
+
+/* Step actions */
+.step-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--theme-border, #e5e7eb);
+}
+
+/* Column mapping */
+.mapping-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+}
+
+.mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.mapping-source {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.82rem;
+    background: var(--theme-surface-alt, #f8fafc);
+    border: 1px solid var(--theme-border, #e5e7eb);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    min-width: 140px;
+}
+
+.mapping-arrow { color: var(--theme-muted, #6b7280); }
+
+.mapping-select { min-width: 160px; }
+
+/* Unit row */
+.unit-row {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+}
+
+.control-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--theme-muted, #6b7280);
+}
+
+.text-input {
+    border: 1px solid var(--theme-border, #d1d5db);
+    border-radius: 6px;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.9rem;
+    min-width: 140px;
+}
+
+/* Report */
+.report-kpis {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0 1.25rem;
+}
+
+.report-kpi {
+    flex: 1 1 100px;
+    text-align: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.report-kpi span {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.report-kpi.created  { background: #dcfce7; color: #15803d; }
+.report-kpi.created span { color: #15803d; }
+.report-kpi.updated  { background: #dbeafe; color: #1d4ed8; }
+.report-kpi.updated span { color: #1d4ed8; }
+.report-kpi.skipped  { background: #fef9c3; color: #a16207; }
+.report-kpi.skipped span { color: #a16207; }
+.report-kpi.conflicted { background: #fee2e2; color: #b91c1c; }
+.report-kpi.conflicted span { color: #b91c1c; }
+
+.sub-title { font-size: 0.9rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+.error-title { color: #b91c1c; }
+
+.error-list {
+    padding-left: 1.1rem;
+    font-size: 0.85rem;
+    color: #b91c1c;
+}
+
+.help-text {
+    margin: 0 0 0.75rem;
+    font-size: 0.88rem;
+    color: var(--theme-muted, #6b7280);
+}
+
+/* Export */
+.export-summary {
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--theme-accent, #2563eb);
+    font-weight: 600;
+}
+
+.export-pre {
+    margin-top: 0.5rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #f8fafc;
+    padding: 0.75rem;
+    border-radius: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Button styles */
+.primary-button {
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--theme-accent, #2563eb);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.primary-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.secondary-button {
+    border: 1px solid var(--theme-border, #d1d5db);
+    border-radius: 6px;
+    padding: 0.45rem 1rem;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--theme-accent, #2563eb);
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 0.75rem;
+}
+
+.mono { font-family: 'Fira Code', monospace; font-size: 0.82rem; }

@@ -929,6 +929,138 @@ function createNasaApi() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Spatial engine mock (port 4316)
+// ---------------------------------------------------------------------------
+
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function shoelaceAcres(ring) {
+  if (ring.length < 3) return 0;
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const centLat = ring.reduce((s, p) => s + p.lat, 0) / ring.length;
+  const cosLat = Math.cos(toRad(centLat));
+  const pts = ring.map((p) => ({ x: toRad(p.lon) * R * cosLat, y: toRad(p.lat) * R }));
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const j = (i + 1) % pts.length;
+    area += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+  }
+  return Math.abs(area) / 2 / 4046.856422;
+}
+
+function haversineMiles(a, b) {
+  const R = 3958.8;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', (chunk) => { data += chunk; });
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)); } catch { resolve({}); }
+    });
+  });
+}
+
+function createSpatialApi() {
+  return http.createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost:4316');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
+      res.end(); return;
+    }
+    const path = url.pathname;
+    if (path === '/api/spatial/demo') {
+      try {
+        const data = JSON.parse(readFileSync(resolve(__dirname, '../data/demo-field.json'), 'utf-8'));
+        sendJson(res, 200, data);
+      } catch { sendJson(res, 500, { error: 'demo-field.json not found' }); }
+      return;
+    }
+    if (path === '/api/spatial/boundary-area' && req.method === 'POST') {
+      const body = await readBody(req);
+      const ring = body.ring ?? [];
+      const areaAcres = shoelaceAcres(ring);
+      let perimMiles = 0;
+      for (let i = 0; i < ring.length; i++) perimMiles += haversineMiles(ring[i], ring[(i + 1) % ring.length]);
+      sendJson(res, 200, {
+        blockId: 'boundary-area',
+        computed: { areaAcres: +areaAcres.toFixed(4), areaHectares: +(areaAcres * 0.404686).toFixed(4), perimeterMiles: +perimMiles.toFixed(4), perimeterKm: +(perimMiles * 1.60934).toFixed(4), vertexCount: ring.length },
+        outputLayers: [{ id: 'output-boundary-area', name: 'Field Boundary', type: 'boundary', geometry: { type: 'Polygon', coordinates: [ring.map(p => [p.lon, p.lat])] }, attributes: { areaAcres }, source: 'spatial-engine' }],
+        explanation: `This field covers ${areaAcres.toFixed(2)} acres with a perimeter of ${perimMiles.toFixed(2)} miles.`,
+      }); return;
+    }
+    if (path === '/api/spatial/terrain-flow' && req.method === 'POST') {
+      const body = await readBody(req);
+      const grid = body.values ?? [];
+      sendJson(res, 200, {
+        blockId: 'terrain-flow',
+        computed: { minSlopePercent: 0.5, maxSlopePercent: 2.1, avgSlopePercent: 1.2, poolingZoneCount: 0, runoffZoneCount: 1, analyzedPoints: 9 },
+        outputLayers: [
+          { id: 'output-terrain-slope', name: 'Terrain Slope', type: 'terrain', attributes: { points: [], minSlopePercent: 0.5, maxSlopePercent: 2.1, avgSlopePercent: 1.2 }, source: 'spatial-engine' },
+          { id: 'output-terrain-pooling', name: 'Pooling Zones', type: 'terrain', attributes: { zones: [], count: 0 }, source: 'spatial-engine' },
+          { id: 'output-terrain-runoff', name: 'Runoff Risk Zones', type: 'terrain', attributes: { zones: [], count: 1 }, source: 'spatial-engine' },
+        ],
+        explanation: `Average slope is 1.2% (range 0.5%–2.1%). 0 pooling zone(s) and 1 runoff-risk zone(s) identified.`,
+      }); return;
+    }
+    if (path === '/api/spatial/carrying-capacity' && req.method === 'POST') {
+      const body = await readBody(req);
+      const mode = body.mode ?? 'logistic';
+      sendJson(res, 200, {
+        blockId: 'carrying-capacity',
+        computed: mode === 'logistic'
+          ? { finalPopulation: 195.2, carryingCapacity: body.logistic?.carryingCapacity ?? 200, percentOfCarryingCapacity: 97.6, steps: body.logistic?.steps ?? 50 }
+          : { finalPrey: 38.4, finalPredator: 10.2, steps: body.lotkaVolterra?.steps ?? 50 },
+        outputLayers: [{ id: mode === 'logistic' ? 'output-logistic-series' : 'output-lotka-volterra-series', name: mode === 'logistic' ? 'Logistic Growth Series' : 'Predator-Prey Series', type: 'custom', attributes: { series: [] }, source: 'spatial-engine' }],
+        explanation: mode === 'logistic' ? 'Population reached 195.2, which is 97.6% of carrying capacity.' : 'After simulation: prey = 38, predators = 10.',
+      }); return;
+    }
+    if (path === '/api/spatial/health' || path === '/') { sendJson(res, 200, { service: 'spatial-engine', status: 'ok' }); return; }
+    notFound(res, path);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Transfer hub mock (port 4318)
+// ---------------------------------------------------------------------------
+
+function createTransferApi() {
+  return http.createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost:4318');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
+      res.end(); return;
+    }
+    const path = url.pathname;
+    if (path === '/api/transfer/health' || path === '/') { sendJson(res, 200, { service: 'transfer-hub', status: 'ok' }); return; }
+    if (path === '/api/transfer/import' && req.method === 'POST') {
+      const body = await readBody(req);
+      sendJson(res, 200, {
+        importId: `import-${Date.now()}`,
+        status: 'validated',
+        summary: { detected: { growers: 1, farms: 1, fields: body.rows?.length ?? 0 }, created: body.rows?.length ?? 0, updated: 0, skipped: 0, conflicted: 0 },
+        errors: [],
+      }); return;
+    }
+    if (path === '/api/transfer/export') {
+      sendJson(res, 200, { exportId: `export-${Date.now()}`, format: 'csv', records: 0, downloadUrl: null }); return;
+    }
+    notFound(res, path);
+  });
+}
+
 listen(createWeatherApi(), 4300, 'weather-intelligence');
 listen(createFieldApi(), 4302, 'field-intelligence');
 listen(createQueryApi(), 4304, 'query-intelligence');
@@ -937,3 +1069,5 @@ listen(createDatagovApi(), 4308, 'datagov-catalog');
 listen(createAgronomyApi(), 4310, 'agronomy-gateway');
 listen(createAiSearchApi(), 4312, 'ai-agronomy-search');
 listen(createNasaApi(), 4314, 'NASA open APIs (mock)');
+listen(createSpatialApi(), 4316, 'spatial-engine');
+listen(createTransferApi(), 4318, 'transfer-hub');

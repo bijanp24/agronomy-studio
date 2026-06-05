@@ -1,6 +1,7 @@
 @page "/query"
 @using System.Text.Json
 @using System.Globalization
+@using AgronomyStudio.Models
 @inject QueryService QueryService
 @inject BrowserStorage Storage
 
@@ -104,10 +105,31 @@
 
                 <p class="result-summary">@res.Summary</p>
 
-                <label class="sql-toggle">
-                    <input type="checkbox" checked="@_showSql" @onchange="e => _showSql = e.Value is true" />
-                    Show SQL
-                </label>
+                <div class="result-actions">
+                    <label class="sql-toggle">
+                        <input type="checkbox" checked="@_showSql" @onchange="e => _showSql = e.Value is true" />
+                        Show SQL
+                    </label>
+
+                    @if (!_savingStory)
+                    {
+                        <button class="story-btn" @onclick="StartSaveStory" title="Save as dashboard story">
+                            <span class="bi bi-bookmark-plus" aria-hidden="true"></span> Save as Story
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="save-story-inline">
+                            <input class="story-title-input"
+                                   @bind="_storyTitle"
+                                   placeholder="Story title…"
+                                   aria-label="Dashboard story title" />
+                            <button class="btn btn-primary story-save-btn" @onclick="SaveStory"
+                                    disabled="@string.IsNullOrWhiteSpace(_storyTitle)">Save</button>
+                            <button class="icon-btn" @onclick="() => _savingStory = false" aria-label="Cancel">✕</button>
+                        </div>
+                    }
+                </div>
 
                 @if (_showSql)
                 {
@@ -142,11 +164,51 @@
                 }
             </div>
         }
+
+        @if (_stories.Count > 0 || _savedConfirmation is not null)
+        {
+            <div class="studio-card stories-card">
+                <div class="stories-header">
+                    <h3><span class="bi bi-journals" aria-hidden="true"></span> Dashboard Stories</h3>
+                    <button class="icon-btn" @onclick="ClearStories" title="Clear all stories" aria-label="Clear all dashboard stories">
+                        <span class="bi bi-trash3" aria-hidden="true"></span>
+                    </button>
+                </div>
+
+                @if (_savedConfirmation is not null)
+                {
+                    <div class="story-confirmation">✓ Saved: @_savedConfirmation</div>
+                }
+
+                <ul class="stories-list">
+                    @foreach (var story in _stories)
+                    {
+                        <li class="story-item">
+                            <div class="story-item-header">
+                                <button class="story-load-btn" @onclick="() => LoadStory(story)">
+                                    <span class="bi bi-play-circle" aria-hidden="true"></span>
+                                    <strong>@story.Title</strong>
+                                </button>
+                                <button class="icon-btn story-delete" @onclick="() => DeleteStory(story.Id)" aria-label="Delete story">✕</button>
+                            </div>
+                            <p class="story-question">@story.Question</p>
+                            <p class="story-summary">@story.Summary</p>
+                            <details>
+                                <summary class="story-sql-toggle">SQL preview</summary>
+                                <pre class="story-sql"><code>@story.Sql</code></pre>
+                            </details>
+                            <span class="story-meta">@story.RowCount rows · @FormatStoryDate(story.SavedAt) · @story.Provider</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
     </main>
 </div>
 
 @code {
     private const string HistoryKey = "agronomy_query_history";
+    private const string StoriesKey = "agronomy_dashboard_stories";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -167,9 +229,19 @@
     private bool _showSql;
     private List<QueryHistoryEntry> _history = new();
 
+    // Dashboard stories state
+    private List<DashboardStory> _stories = new();
+    private bool _savingStory;
+    private string _storyTitle = "";
+    private string? _savedConfirmation;
+
     private List<string> Columns => _result?.Columns.Select(c => c.Name).ToList() ?? new();
 
-    protected override async Task OnInitializedAsync() => _history = await LoadHistory();
+    protected override async Task OnInitializedAsync()
+    {
+        _history = await LoadHistory();
+        _stories = await LoadStories();
+    }
 
     private async Task Submit()
     {
@@ -243,5 +315,82 @@
     {
         if (!row.TryGetValue(col, out var value)) return "";
         return value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString();
+    }
+
+    // ── Dashboard stories ─────────────────────────────────────────────────
+
+    private void StartSaveStory()
+    {
+        _storyTitle = _question.Length > 50 ? _question[..50] + "…" : _question;
+        _savingStory = true;
+        _savedConfirmation = null;
+    }
+
+    private async Task SaveStory()
+    {
+        if (_result is null || string.IsNullOrWhiteSpace(_storyTitle)) return;
+
+        var story = new DashboardStory
+        {
+            Id = Guid.NewGuid().ToString(),
+            Title = _storyTitle.Trim(),
+            Question = _question,
+            Sql = _result.Sql,
+            Summary = _result.Summary,
+            RowCount = _result.RowCount,
+            SavedAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+            Provider = _provider,
+        };
+
+        _stories = new[] { story }
+            .Concat(_stories.Where(s => s.Title != story.Title))
+            .Take(30)
+            .ToList();
+
+        await Storage.SetItemAsync(StoriesKey, JsonSerializer.Serialize(_stories, JsonOptions));
+        _savedConfirmation = story.Title;
+        _savingStory = false;
+        _storyTitle = "";
+    }
+
+    private void LoadStory(DashboardStory story)
+    {
+        _question = story.Question;
+        _provider = story.Provider;
+        _savedConfirmation = null;
+    }
+
+    private async Task DeleteStory(string id)
+    {
+        _stories = _stories.Where(s => s.Id != id).ToList();
+        await Storage.SetItemAsync(StoriesKey, JsonSerializer.Serialize(_stories, JsonOptions));
+    }
+
+    private async Task ClearStories()
+    {
+        _stories = new();
+        _savedConfirmation = null;
+        await Storage.RemoveItemAsync(StoriesKey);
+    }
+
+    private async Task<List<DashboardStory>> LoadStories()
+    {
+        try
+        {
+            var raw = await Storage.GetItemAsync(StoriesKey);
+            if (string.IsNullOrEmpty(raw)) return new();
+            return JsonSerializer.Deserialize<List<DashboardStory>>(raw, JsonOptions) ?? new();
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
+    private static string FormatStoryDate(string iso)
+    {
+        if (DateTime.TryParse(iso, out var dt))
+            return dt.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+        return iso;
     }
 }

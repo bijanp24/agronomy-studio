@@ -1,0 +1,237 @@
+.block-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+}
+
+.block-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--theme-border, #e5e7eb);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.block-tab:hover {
+    border-color: var(--theme-accent, #2563eb);
+}
+
+.block-tab--active {
+    border-color: var(--theme-accent, #2563eb);
+    background: #eff6ff;
+    color: var(--theme-accent, #2563eb);
+}
+
+.block-tab-icon {
+    font-size: 1.1rem;
+}
+
+.difficulty-chip {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    text-transform: capitalize;
+}
+
+.difficulty-beginner {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.difficulty-intermediate {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+.difficulty-advanced {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.learn-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.concept-card p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.formula-card {
+    background: var(--theme-surface-alt, #f8fafc);
+}
+
+.formula-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--theme-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.5rem;
+}
+
+.formula-pre {
+    margin: 0;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.88rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.8;
+}
+
+.controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.control-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--theme-muted, #6b7280);
+}
+
+.text-input {
+    border: 1px solid var(--theme-border, #d1d5db);
+    border-radius: 6px;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.9rem;
+    min-width: 140px;
+}
+
+.text-input.narrow {
+    min-width: 80px;
+    width: 90px;
+}
+
+.primary-button {
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--theme-accent, #2563eb);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.primary-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.secondary-button {
+    border: 1px solid var(--theme-border, #d1d5db);
+    border-radius: 6px;
+    padding: 0.35rem 0.85rem;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--theme-accent, #2563eb);
+}
+
+.demo-note {
+    font-size: 0.78rem;
+    color: var(--theme-muted, #6b7280);
+    align-self: center;
+}
+
+/* Result card */
+.result-card {
+    border-left: 4px solid var(--theme-accent, #2563eb);
+}
+
+.result-explanation {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.result-warning {
+    margin: 0 0 0.75rem;
+    font-size: 0.88rem;
+    color: #b45309;
+    background: #fffbeb;
+    border-radius: 6px;
+    padding: 0.4rem 0.75rem;
+}
+
+.computed-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.35rem 1.5rem;
+    margin: 0;
+}
+
+.computed-grid > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--theme-border, #e5e7eb);
+    padding: 0.3rem 0;
+}
+
+.computed-grid dt {
+    color: var(--theme-muted, #6b7280);
+    font-size: 0.82rem;
+}
+
+.computed-grid dd {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+/* Terrain stats */
+.terrain-stats {
+    background: var(--theme-surface-alt, #f8fafc);
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--theme-border, #e5e7eb);
+    font-size: 0.88rem;
+}
+
+/* Quiz card */
+.quiz-question {
+    font-size: 0.95rem;
+    margin: 0 0 0.75rem;
+    font-weight: 500;
+}
+
+.quiz-answer {
+    font-size: 0.9rem;
+    background: #f0fdf4;
+    border-left: 4px solid #22c55e;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0 6px 6px 0;
+    margin: 0 0 0.75rem;
+}
+
+.learn-note {
+    font-size: 0.85rem;
+    color: var(--theme-muted, #6b7280);
+    margin: 0;
+}

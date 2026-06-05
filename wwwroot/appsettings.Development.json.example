@@ -12,6 +12,8 @@
     "NasaKey": "DEMO_KEY",
     "OpenMeteoApi": "https://api.open-meteo.com",
     "AgronomyApi": "http://localhost:4310",
-    "AiSearchApi": "http://localhost:4312"
+    "AiSearchApi": "http://localhost:4312",
+    "SpatialApi": "http://localhost:4316",
+    "TransferApi": "http://localhost:4318"
   }
 }

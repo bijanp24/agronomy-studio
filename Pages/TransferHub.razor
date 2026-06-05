@@ -1,0 +1,481 @@
+@page "/transfer"
+@using System.Globalization
+@using AgronomyStudio.Models
+@inject TransferService Transfer
+
+<PageTitle>Data Transfer Hub · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Data Transfer Hub</h1>
+    <p class="page-sub">Import your history · Export anytime · No lock-in · Your fields, your records, your decisions</p>
+</div>
+
+@* ── Step tabs ─────────────────────────────────────────────────────────── *@
+<div class="studio-card step-tabs" role="tablist" aria-label="Import steps">
+    @foreach (var step in _steps)
+    {
+        <button class="step-tab @StepClass(step.Id)"
+                role="tab"
+                aria-selected="@(_step == step.Id)"
+                @onclick="() => _step = step.Id"
+                disabled="@(!step.Available)">
+            <span class="step-number">@step.Number</span>
+            <span>@step.Label</span>
+        </button>
+    }
+</div>
+
+@* ── Step 1: Choose source ─────────────────────────────────────────────── *@
+@if (_step == "source")
+{
+    <div class="studio-card">
+        <h2 class="section-title">Where is your data coming from?</h2>
+        <div class="source-grid">
+            @foreach (var src in _sources)
+            {
+                <button class="source-card @(_source == src.Id ? "source-card--active" : "")"
+                        @onclick="() => { _source = src.Id; _step = src.NextStep; }">
+                    <span class="source-icon" aria-hidden="true">@src.Icon</span>
+                    <strong>@src.Label</strong>
+                    <span class="source-desc">@src.Desc</span>
+                </button>
+            }
+        </div>
+    </div>
+}
+
+@* ── Step 2: Upload ────────────────────────────────────────────────────── *@
+@if (_step == "upload")
+{
+    <div class="studio-card">
+        <h2 class="section-title">Upload your file</h2>
+
+        @if (_source is "csv" or "excel")
+        {
+            <div class="upload-area">
+                <p class="upload-hint">Paste your CSV content below, or drag-and-drop support coming in V2.</p>
+                <textarea class="csv-textarea"
+                          @bind="_csvText"
+                          placeholder="field_name,farm,acres,crop,year&#10;Block A,Sunrise Ranch,42.3,Almond,2025&#10;Block B,River West Farm,36.1,Tomato,2025"
+                          aria-label="CSV content">
+                </textarea>
+                <div class="upload-actions">
+                    <button class="primary-button" @onclick="Preview" disabled="@(_loading || string.IsNullOrWhiteSpace(_csvText))">
+                        @(_loading ? "Parsing…" : "Preview")
+                    </button>
+                    <button class="secondary-button" @onclick="LoadDemoData">Load demo data</button>
+                </div>
+            </div>
+        }
+
+        @if (_source == "geojson")
+        {
+            <div class="upload-area">
+                <p class="upload-hint">Paste your GeoJSON FeatureCollection below.</p>
+                <textarea class="csv-textarea"
+                          @bind="_geoJsonText"
+                          placeholder="{&quot;type&quot;:&quot;FeatureCollection&quot;,&quot;features&quot;:[...]}"
+                          aria-label="GeoJSON content">
+                </textarea>
+                <div class="upload-actions">
+                    <button class="primary-button" @onclick="ImportGeoJson" disabled="@(_loading || string.IsNullOrWhiteSpace(_geoJsonText))">
+                        @(_loading ? "Importing…" : "Import Boundaries")
+                    </button>
+                </div>
+            </div>
+        }
+
+        @if (_hasError)
+        {
+            <div class="error-banner">@_errorMessage</div>
+        }
+    </div>
+}
+
+@* ── Step 3: Preview ───────────────────────────────────────────────────── *@
+@if (_step == "preview" && _preview is not null)
+{
+    <div class="studio-card">
+        <h2 class="section-title">We found…</h2>
+        <div class="kpi-row">
+            <div class="kpi-card studio-card">
+                <div class="kpi-value">@_preview.DetectedFields</div>
+                <div class="kpi-label">Fields detected</div>
+            </div>
+            <div class="kpi-card studio-card">
+                <div class="kpi-value">@_preview.DetectedColumns.Count</div>
+                <div class="kpi-label">Columns</div>
+            </div>
+            @if (_preview.Warnings.Count > 0)
+            {
+                <div class="kpi-card studio-card warn-kpi">
+                    <div class="kpi-value">@_preview.Warnings.Count</div>
+                    <div class="kpi-label">Warnings</div>
+                </div>
+            }
+        </div>
+
+        @if (_preview.SampleRows.Count > 0)
+        {
+            <h3 class="sub-title">Sample rows</h3>
+            <div class="table-scroll">
+                <table class="studio-table">
+                    <thead>
+                        <tr>
+                            @foreach (var col in _preview.DetectedColumns)
+                            {
+                                <th>@col</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _preview.SampleRows)
+                        {
+                            <tr>
+                                @foreach (var cell in row)
+                                {
+                                    <td>@cell</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="step-actions">
+            <button class="primary-button" @onclick="() => _step = 'mapping'">Map Columns →</button>
+            <button class="secondary-button" @onclick="() => _step = 'upload'">← Back</button>
+        </div>
+    </div>
+}
+
+@* ── Step 4: Column mapping ────────────────────────────────────────────── *@
+@if (_step == "mapping" && _preview is not null)
+{
+    <div class="studio-card">
+        <h2 class="section-title">Map your columns to Agronomy Studio fields</h2>
+        <p class="help-text">We've suggested mappings based on common column names. Adjust as needed.</p>
+
+        <div class="mapping-grid">
+            @foreach (var m in _columnMappings)
+            {
+                <div class="mapping-row">
+                    <span class="mapping-source">@m.SourceColumn</span>
+                    <span class="mapping-arrow" aria-hidden="true">→</span>
+                    <select class="text-input mapping-select"
+                            value="@m.CanonicalField"
+                            @onchange="(e) => UpdateMapping(m.SourceColumn, e.Value?.ToString() ?? m.CanonicalField)">
+                        @foreach (var opt in _canonicalFields)
+                        {
+                            <option value="@opt">@opt</option>
+                        }
+                    </select>
+                </div>
+            }
+        </div>
+
+        <div class="step-actions">
+            <button class="primary-button" @onclick="() => _step = 'units'">Validate Units →</button>
+            <button class="secondary-button" @onclick="() => _step = 'preview'">← Back</button>
+        </div>
+    </div>
+}
+
+@* ── Step 5: Unit validation ───────────────────────────────────────────── *@
+@if (_step == "units")
+{
+    <div class="studio-card">
+        <h2 class="section-title">Validate units</h2>
+        <p class="help-text">Confirm area units so all acreage calculations are accurate.</p>
+
+        <div class="unit-row">
+            <label class="control-field">
+                <span class="field-label">Area unit in your data</span>
+                <select class="text-input" @bind="_detectedUnit">
+                    <option value="acre">Acres</option>
+                    <option value="hectare">Hectares</option>
+                </select>
+            </label>
+            <label class="control-field">
+                <span class="field-label">Target unit in Agronomy Studio</span>
+                <select class="text-input" @bind="_targetUnit">
+                    <option value="acre">Acres</option>
+                    <option value="hectare">Hectares</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="step-actions">
+            <button class="primary-button" @onclick="RunImport" disabled="@_loading">
+                @(_loading ? "Importing…" : "Finish Import")
+            </button>
+            <button class="secondary-button" @onclick="() => _step = 'mapping'">← Back</button>
+        </div>
+    </div>
+}
+
+@* ── Step 6: Migration report ──────────────────────────────────────────── *@
+@if (_step == "report" && _report is not null)
+{
+    <div class="studio-card report-card">
+        <h2 class="section-title">Migration Report</h2>
+
+        <div class="report-kpis">
+            <div class="report-kpi created"><span>@_report.Created</span> Created</div>
+            <div class="report-kpi updated"><span>@_report.Updated</span> Updated</div>
+            <div class="report-kpi skipped"><span>@_report.Skipped</span> Skipped</div>
+            <div class="report-kpi conflicted"><span>@_report.Conflicted</span> Conflicted</div>
+        </div>
+
+        @if (_report.Fields.Count > 0)
+        {
+            <h3 class="sub-title">Imported fields</h3>
+            <div class="table-scroll">
+                <table class="studio-table">
+                    <thead>
+                        <tr>
+                            <th>Field ID</th>
+                            <th>Name</th>
+                            <th>Area</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in _report.Fields)
+                        {
+                            <tr>
+                                <td class="mono">@f.Id</td>
+                                <td>@f.Name</td>
+                                <td>@(f.Area is not null ? $"{f.Area.Value.ToString("0.##", CultureInfo.InvariantCulture)} {f.Area.Unit}" : "—")</td>
+                                <td>@f.SourceSystem</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (_report.Errors.Count > 0)
+        {
+            <h3 class="sub-title error-title">Errors</h3>
+            <ul class="error-list">
+                @foreach (var err in _report.Errors)
+                {
+                    <li><strong>Row @err.Row, @err.Field:</strong> @err.Message</li>
+                }
+            </ul>
+        }
+
+        <div class="step-actions">
+            <button class="primary-button" @onclick="ExportData" disabled="@_loading">
+                @(_loading ? "Exporting…" : "Export CSV")
+            </button>
+            <button class="secondary-button" @onclick="Reset">Start new import</button>
+        </div>
+    </div>
+}
+
+@* ── Export result ─────────────────────────────────────────────────────── *@
+@if (_exportResult is not null)
+{
+    <div class="studio-card">
+        <h2 class="section-title">Export ready</h2>
+        <p>@_exportResult.Records record(s) in @_exportResult.Format.ToUpperInvariant() format.</p>
+        @if (!string.IsNullOrEmpty(_exportResult.CsvContent))
+        {
+            <details>
+                <summary class="export-summary">View export content</summary>
+                <pre class="export-pre">@_exportResult.CsvContent</pre>
+            </details>
+        }
+    </div>
+}
+
+@code {
+    record StepMeta(string Id, int Number, string Label, bool Available);
+    record SourceMeta(string Id, string Icon, string Label, string Desc, string NextStep);
+
+    private readonly List<StepMeta> _steps = new()
+    {
+        new("source",  1, "Choose source",   true),
+        new("upload",  2, "Upload",          false),
+        new("preview", 3, "Preview",         false),
+        new("mapping", 4, "Map columns",     false),
+        new("units",   5, "Validate units",  false),
+        new("report",  6, "Migration report",false),
+    };
+
+    private readonly List<SourceMeta> _sources = new()
+    {
+        new("csv",     "📄", "CSV / Excel",     "Field list, operations, soil tests, yield history", "upload"),
+        new("geojson", "🗺",  "GeoJSON",          "Field boundary polygons from any GIS tool",         "upload"),
+        new("manual",  "✏️",  "Manual entry",     "Copy-paste a table from any source",               "upload"),
+    };
+
+    private static readonly List<string> _canonicalFields = new()
+    {
+        "name", "farmName", "growerName", "areaValue", "areaUnit", "cropName",
+        "variety", "cropYear", "operationType", "date", "fieldId", "notes", "(ignore)",
+    };
+
+    private string _step = "source";
+    private string _source = "";
+    private bool _loading;
+    private bool _hasError;
+    private string _errorMessage = "";
+
+    private string _csvText = "";
+    private string _geoJsonText = "";
+    private string _detectedUnit = "acre";
+    private string _targetUnit = "acre";
+
+    private ImportPreview? _preview;
+    private List<ColumnMapping> _columnMappings = new();
+    private MigrationReport? _report;
+    private ExportResult? _exportResult;
+
+    private string? _importId;
+
+    private string StepClass(string id)
+    {
+        var stepIds = _steps.Select(s => s.Id).ToList();
+        var current = stepIds.IndexOf(_step);
+        var target = stepIds.IndexOf(id);
+        if (id == _step) return "step-tab--active";
+        if (target < current) return "step-tab--done";
+        return "";
+    }
+
+    private void LoadDemoData()
+    {
+        _csvText = "field_name,farm,acres,crop,year\nBlock A,Sunrise Ranch,42.3,Almond,2025\nBlock B,River West Farm,36.1,Tomato,2025\nBlock C,Delta Farms,58.0,Cotton,2025";
+    }
+
+    private async Task Preview()
+    {
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            _preview = await Transfer.PreviewCsvAsync(_csvText, _source == "csv" ? "CSV Import" : "Manual Entry");
+            if (_preview is not null)
+            {
+                _columnMappings = _preview.SuggestedMappings;
+                _step = "preview";
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = $"Preview failed: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ImportGeoJson()
+    {
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            var geojson = System.Text.Json.JsonSerializer.Deserialize<object>(_geoJsonText);
+            _report = await Transfer.ImportGeoJsonAsync(geojson!, "GeoJSON Import");
+            if (_report is not null)
+            {
+                _importId = _report.ImportId;
+                _step = "report";
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = $"GeoJSON import failed: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RunImport()
+    {
+        _loading = true;
+        _hasError = false;
+        try
+        {
+            var unitConversions = new List<UnitConversion>();
+            if (_detectedUnit != _targetUnit)
+            {
+                double factor = (_detectedUnit == "acre" && _targetUnit == "hectare") ? 0.404686 : 2.47105;
+                unitConversions.Add(new UnitConversion
+                {
+                    FieldName = "areaValue",
+                    DetectedUnit = _detectedUnit,
+                    TargetUnit = _targetUnit,
+                    ConversionFactor = factor,
+                });
+            }
+
+            _report = await Transfer.ImportCsvAsync(
+                _csvText,
+                _columnMappings,
+                unitConversions,
+                _source == "csv" ? "CSV Import" : "Manual Entry");
+
+            if (_report is not null)
+            {
+                _importId = _report.ImportId;
+                _step = "report";
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ExportData()
+    {
+        _loading = true;
+        try
+        {
+            _exportResult = await Transfer.ExportAsync(_importId, "csv");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void UpdateMapping(string sourceColumn, string canonicalField)
+    {
+        var idx = _columnMappings.FindIndex(m => m.SourceColumn == sourceColumn);
+        if (idx >= 0)
+        {
+            _columnMappings[idx] = new ColumnMapping { SourceColumn = sourceColumn, CanonicalField = canonicalField };
+        }
+    }
+
+    private void Reset()
+    {
+        _step = "source";
+        _source = "";
+        _csvText = "";
+        _geoJsonText = "";
+        _preview = null;
+        _columnMappings = new();
+        _report = null;
+        _exportResult = null;
+        _importId = null;
+        _hasError = false;
+    }
+}

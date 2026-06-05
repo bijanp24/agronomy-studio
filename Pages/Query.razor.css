@@ -221,6 +221,174 @@
     border: 1px solid var(--theme-border);
 }
 
+/* Result actions row — SQL toggle + Save as Story */
+.result-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.sql-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--theme-muted);
+    margin-bottom: 0;
+}
+
+.story-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--theme-accent, #2563eb);
+    background: transparent;
+    border: 1px solid var(--theme-accent, #2563eb);
+    border-radius: 6px;
+    padding: 0.25rem 0.65rem;
+    cursor: pointer;
+}
+
+.story-btn:hover { background: #eff6ff; }
+
+.save-story-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.story-title-input {
+    border: 1px solid var(--theme-border, #d1d5db);
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    min-width: 200px;
+}
+
+.story-save-btn {
+    font-size: 0.82rem;
+    padding: 0.3rem 0.75rem;
+}
+
+/* Dashboard stories card */
+.stories-card {
+    margin-top: 0.5rem;
+}
+
+.stories-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.stories-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.story-confirmation {
+    font-size: 0.82rem;
+    color: #15803d;
+    background: #dcfce7;
+    border-radius: 6px;
+    padding: 0.25rem 0.65rem;
+    margin-bottom: 0.65rem;
+}
+
+.stories-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.story-item {
+    border: 1px solid var(--theme-border, #e5e7eb);
+    border-radius: 8px;
+    padding: 0.75rem 0.9rem;
+}
+
+.story-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.story-load-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--theme-accent, #2563eb);
+    padding: 0;
+    text-align: left;
+}
+
+.story-load-btn:hover { text-decoration: underline; }
+
+.story-delete {
+    font-size: 0.78rem;
+    color: var(--theme-muted, #6b7280);
+    flex-shrink: 0;
+}
+
+.story-question {
+    font-size: 0.82rem;
+    color: var(--theme-muted, #4b5563);
+    margin: 0 0 0.2rem;
+    font-style: italic;
+}
+
+.story-summary {
+    font-size: 0.85rem;
+    margin: 0 0 0.35rem;
+    line-height: 1.5;
+}
+
+.story-sql-toggle {
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--theme-accent, #2563eb);
+    font-weight: 600;
+}
+
+.story-sql {
+    margin: 0.3rem 0 0;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.story-meta {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--theme-muted, #9ca3af);
+}
+
 @media (max-width: 768px) {
     .query-layout {
         grid-template-columns: 1fr;
