@@ -38,7 +38,7 @@
             <select id="field-select" class="studio-select" @onchange="OnFieldChanged">
                 @foreach (var f in _fields)
                 {
-                    <option value="@f.Id" selected="@(f.Id == _selectedFieldId)">@f.Name — @f.Crop</option>
+                    <option value="@f.FieldId" selected="@(f.FieldId == _selectedFieldId)">@f.FieldName — @f.Crop</option>
                 }
             </select>
             <select class="studio-select" @bind="_cropYear">
@@ -108,7 +108,7 @@
 }
 
 @code {
-    private List<Field> _fields = new();
+    private List<FieldSummary> _fields = new();
     private string _selectedFieldId = "";
     private string _selectedCrop = "almond";
     private int _cropYear = 2026;
@@ -121,12 +121,12 @@
     {
         try
         {
-            var resp = await FieldService.GetFieldsAsync();
-            _fields = resp?.Fields ?? new();
+            var summary = await FieldService.GetDashboardSummaryAsync();
+            _fields = summary?.Fields ?? new();
             if (_fields.Count > 0)
             {
-                _selectedFieldId = _fields[0].Id;
-                _selectedCrop = "almond";
+                _selectedFieldId = _fields[0].FieldId;
+                _selectedCrop = string.IsNullOrEmpty(_fields[0].Crop) ? "almond" : _fields[0].Crop;
             }
         }
         catch (Exception ex)
@@ -145,12 +145,8 @@
     private void OnFieldChanged(ChangeEventArgs e)
     {
         _selectedFieldId = e.Value?.ToString() ?? "";
-        var f = _fields.FirstOrDefault(x => x.Id == _selectedFieldId);
-        // Crop name is not on the Field record directly; use a lookup heuristic
-        _selectedCrop = f?.Notes?.Contains("almond") == true ? "almond"
-            : f?.Notes?.Contains("tomato") == true ? "tomato"
-            : f?.Notes?.Contains("pistachio") == true ? "pistachio"
-            : "almond";
+        var f = _fields.FirstOrDefault(x => x.FieldId == _selectedFieldId);
+        _selectedCrop = string.IsNullOrEmpty(f?.Crop) ? "almond" : f!.Crop;
     }
 
     private async Task LoadPrediction()
