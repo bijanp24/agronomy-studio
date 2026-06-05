@@ -34,6 +34,12 @@ public sealed record TransferField
     public string Name { get; init; } = "";
     public string? BoundaryGeoJson { get; init; }
     public AreaMeasurement? Area { get; init; }
+
+    /// <summary>Human-readable name of the originating system (e.g. "John Deere Operations Center").</summary>
+    public string? SourceSystem { get; init; }
+
+    /// <summary>Original row/record identifier from the source system.</summary>
+    public string? RawSourceId { get; init; }
 }
 
 public sealed record AreaMeasurement

@@ -144,8 +144,8 @@
         }
 
         <div class="step-actions">
-            <button class="primary-button" @onclick="() => _step = 'mapping'">Map Columns →</button>
-            <button class="secondary-button" @onclick="() => _step = 'upload'">← Back</button>
+            <button class="primary-button" @onclick='() => _step = "mapping"'>Map Columns →</button>
+            <button class="secondary-button" @onclick='() => _step = "upload"'>← Back</button>
         </div>
     </div>
 }
@@ -176,8 +176,8 @@
         </div>
 
         <div class="step-actions">
-            <button class="primary-button" @onclick="() => _step = 'units'">Validate Units →</button>
-            <button class="secondary-button" @onclick="() => _step = 'preview'">← Back</button>
+            <button class="primary-button" @onclick='() => _step = "units"'>Validate Units →</button>
+            <button class="secondary-button" @onclick='() => _step = "preview"'>← Back</button>
         </div>
     </div>
 }
@@ -210,7 +210,7 @@
             <button class="primary-button" @onclick="RunImport" disabled="@_loading">
                 @(_loading ? "Importing…" : "Finish Import")
             </button>
-            <button class="secondary-button" @onclick="() => _step = 'mapping'">← Back</button>
+            <button class="secondary-button" @onclick='() => _step = "mapping"'>← Back</button>
         </div>
     </div>
 }

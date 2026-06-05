@@ -3,6 +3,11 @@ namespace AgronomyStudio.Models;
 // ---------------------------------------------------------------------------
 // Learning-block domain models — provider-neutral, vendor-agnostic.
 // See docs/learning-blocks.md for the full architecture note.
+//
+// NOTE: LearningBlock, FieldLayer, QuizQuestion, and LearningModeContent are
+// defined in Models/LearningBlocks.cs and Models/MapLayers.cs (from the
+// Blazor learning-blocks MVP).  Only the types unique to the Netlify-backed
+// spatial API are declared here.
 // ---------------------------------------------------------------------------
 
 public sealed record LearningBlockInput
@@ -26,73 +31,23 @@ public sealed record RecommendationRule
     public string Recommendation { get; init; } = "";
 }
 
-public sealed record LearningBlock
-{
-    public string Id { get; init; } = "";
-    public string Title { get; init; } = "";
-    public string Concept { get; init; } = "";
-    public string? Formula { get; init; }
-    public List<LearningBlockInput> Inputs { get; init; } = new();
-    public List<LearningBlockOutput> Outputs { get; init; } = new();
-    public List<string> MapLayers { get; init; } = new();
-    public List<string> SimulationSteps { get; init; } = new();
-    public List<RecommendationRule> RecommendationRules { get; init; } = new();
-    public string DifficultyLevel { get; init; } = "beginner";
-    public List<string> Tags { get; init; } = new();
-}
-
 // ---------------------------------------------------------------------------
-// FieldLayer — provider-neutral map/field layer model.
-// External providers are adapted into this model via thin adapters;
-// no vendor name appears here.
+// LearningOutputLayer — lightweight layer carrier returned by the spatial API.
+// Uses Dictionary<string, object> so complex JSON values (arrays, nested
+// objects) survive round-tripping from the TypeScript Netlify function.
 // ---------------------------------------------------------------------------
 
-public sealed record FieldLayerGeometry
-{
-    public string Type { get; init; } = "";
-    public object? Coordinates { get; init; }
-}
-
-public sealed record FieldLayer
+public sealed record LearningOutputLayer
 {
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
 
-    /// <summary>
-    /// boundary | terrain | soil | weather | crop | operations | yield | custom
-    /// </summary>
+    /// <summary>boundary | terrain | soil | weather | crop | operations | yield | custom</summary>
     public string Type { get; init; } = "";
 
-    public FieldLayerGeometry? Geometry { get; init; }
     public Dictionary<string, object> Attributes { get; init; } = new();
-
-    /// <summary>Human-readable provider name (e.g. "local-demo", "NRCS SSURGO").</summary>
     public string? Source { get; init; }
-
-    /// <summary>ISO 8601 timestamp of when the layer data was captured or generated.</summary>
     public string? Timestamp { get; init; }
-}
-
-// ---------------------------------------------------------------------------
-// LearningModeContent — rich educational content attached to a block.
-// ---------------------------------------------------------------------------
-
-public sealed record QuizQuestion
-{
-    public string Question { get; init; } = "";
-    public string Answer { get; init; } = "";
-    public List<string> Choices { get; init; } = new();
-}
-
-public sealed record LearningModeContent
-{
-    public string BlockId { get; init; } = "";
-    public string BeginnerExplanation { get; init; } = "";
-    public string FormulaView { get; init; } = "";
-    public string? MapView { get; init; }
-    public string? SimulationView { get; init; }
-    public List<QuizQuestion> QuizQuestions { get; init; } = new();
-    public string? RecommendationExplanation { get; init; }
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +59,7 @@ public sealed record LearningBlockResult
 {
     public string BlockId { get; init; } = "";
     public Dictionary<string, double> Computed { get; init; } = new();
-    public List<FieldLayer> OutputLayers { get; init; } = new();
+    public List<LearningOutputLayer> OutputLayers { get; init; } = new();
     public string? Explanation { get; init; }
     public string? Warning { get; init; }
 }
