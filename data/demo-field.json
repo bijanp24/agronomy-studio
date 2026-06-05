@@ -1,0 +1,149 @@
+{
+  "_comment": "Local demo dataset for spatial learning blocks. Provider-neutral field and layer names. Small, readable data — architecture validation and learning-mode demos only.",
+  "field": {
+    "id": "demo-field-001",
+    "name": "Sunrise Ranch – Block A",
+    "region": "San Joaquin Valley, CA",
+    "area": { "value": 42.3, "unit": "acre" },
+    "boundary": {
+      "id": "layer-boundary-001",
+      "name": "Block A Boundary",
+      "type": "boundary",
+      "source": "local-demo",
+      "timestamp": "2025-03-01T00:00:00Z",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-119.9200, 36.7400],
+            [-119.9100, 36.7400],
+            [-119.9100, 36.7320],
+            [-119.9200, 36.7320],
+            [-119.9200, 36.7400]
+          ]
+        ]
+      },
+      "attributes": {
+        "areaAcres": 42.3,
+        "perimeterMiles": 2.61,
+        "vertexCount": 5,
+        "notes": "Demo rectangular boundary approximating a San Joaquin Valley almond block"
+      }
+    }
+  },
+  "layers": {
+    "terrain": {
+      "id": "layer-terrain-001",
+      "name": "Block A Elevation",
+      "type": "terrain",
+      "source": "local-demo",
+      "timestamp": "2025-03-01T00:00:00Z",
+      "geometry": null,
+      "attributes": {
+        "elevationGridMeters": [
+          [78.5, 78.2, 77.8, 77.3, 76.9],
+          [78.1, 77.7, 77.2, 76.8, 76.4],
+          [77.6, 77.2, 76.7, 76.3, 75.9],
+          [77.0, 76.5, 76.1, 75.7, 75.3],
+          [76.3, 75.9, 75.4, 75.0, 74.6]
+        ],
+        "gridCellSizeMeters": 50,
+        "originLat": 36.7400,
+        "originLon": -119.9200,
+        "minElevationM": 74.6,
+        "maxElevationM": 78.5,
+        "notes": "5×5 elevation grid. Values decrease toward the southeast, indicating general slope to the SE. Demo data — not surveyed."
+      }
+    },
+    "soil": {
+      "id": "layer-soil-001",
+      "name": "Block A Soil Profile",
+      "type": "soil",
+      "source": "local-demo",
+      "timestamp": "2025-03-01T00:00:00Z",
+      "geometry": null,
+      "attributes": {
+        "mapUnitName": "Hanford sandy loam",
+        "texture": "sandy loam",
+        "drainageClass": "well drained",
+        "hydrologicGroup": "B",
+        "availableWaterCapacityInPerIn": 0.14,
+        "rootZoneDepthIn": 36,
+        "organicMatterPercent": 1.2,
+        "soilPh": 7.1,
+        "notes": "Representative San Joaquin Valley soil profile. Demo data."
+      }
+    },
+    "weather": {
+      "id": "layer-weather-001",
+      "name": "Block A Weather Event – Apr 2025",
+      "type": "weather",
+      "source": "local-demo",
+      "timestamp": "2025-04-15T00:00:00Z",
+      "geometry": null,
+      "attributes": {
+        "eventType": "rainfall",
+        "precipitationIn": 0.42,
+        "durationHours": 6,
+        "maxTempF": 74,
+        "minTempF": 52,
+        "etoIn": 0.21,
+        "windSpeedMph": 8,
+        "notes": "Single rainfall event used for terrain-flow simulation input. Demo data."
+      }
+    },
+    "crop": {
+      "id": "layer-crop-001",
+      "name": "Block A Crop Profile",
+      "type": "crop",
+      "source": "local-demo",
+      "timestamp": "2025-01-15T00:00:00Z",
+      "geometry": null,
+      "attributes": {
+        "cropName": "Almond",
+        "variety": "Nonpareil",
+        "cropYear": 2025,
+        "plantingDate": "2020-02-01",
+        "treeAgeYears": 5,
+        "rowSpacingFt": 18,
+        "treeSpacingFt": 14,
+        "kc": 0.9,
+        "allowableDepletion": 0.5,
+        "notes": "Mid-age almond block. Kc sourced from WUCOLS IV for San Joaquin Valley."
+      }
+    }
+  },
+  "operations": [
+    {
+      "id": "op-001",
+      "fieldId": "demo-field-001",
+      "operationType": "irrigation",
+      "date": "2025-04-10",
+      "measurements": [
+        { "name": "appliedWaterIn", "value": 2.8, "unit": "in" },
+        { "name": "durationHours", "value": 12, "unit": "hr" }
+      ],
+      "notes": "Drip irrigation event. Demo data."
+    },
+    {
+      "id": "op-002",
+      "fieldId": "demo-field-001",
+      "operationType": "fertilizer",
+      "date": "2025-03-20",
+      "measurements": [
+        { "name": "nitrogenLbsPerAcre", "value": 30, "unit": "lb/ac" },
+        { "name": "phosphorusLbsPerAcre", "value": 10, "unit": "lb/ac" }
+      ],
+      "notes": "Spring fertigation. Demo data."
+    }
+  ],
+  "yieldEstimate": {
+    "id": "yield-001",
+    "fieldId": "demo-field-001",
+    "cropYear": 2025,
+    "estimatedYieldLbsPerAcre": 2800,
+    "confidence": "medium",
+    "limitingFactors": ["water-stress"],
+    "notes": "Yield estimate based on historical average for 5-year almond block in SJV. Demo data only — not a management recommendation."
+  }
+}

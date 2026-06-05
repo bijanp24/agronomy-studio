@@ -1,0 +1,410 @@
+@page "/learn"
+@using System.Globalization
+@using AgronomyStudio.Models
+@inject LearningService Learning
+
+<PageTitle>Learn · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Spatial Learning Blocks</h1>
+    <p class="page-sub">Interactive agronomic concepts — each block teaches one idea through a calculation, formula, and map layer</p>
+</div>
+
+@* ── Block selector ────────────────────────────────────────────────────── *@
+<div class="studio-card block-tabs" role="tablist" aria-label="Learning blocks">
+    @foreach (var block in _blocks)
+    {
+        <button class="block-tab @(block.Id == _activeId ? "block-tab--active" : "")"
+                role="tab"
+                aria-selected="@(block.Id == _activeId)"
+                @onclick="() => SelectBlock(block.Id)">
+            <span class="block-tab-icon" aria-hidden="true">@block.Icon</span>
+            <span>@block.Title</span>
+            <span class="difficulty-chip difficulty-@block.Difficulty">@block.Difficulty</span>
+        </button>
+    }
+</div>
+
+@* ── Active block ─────────────────────────────────────────────────────── *@
+@if (_activeId == "boundary-area")
+{
+    <div class="learn-layout">
+        @ConceptCard("Boundary &amp; Area",
+            "A field boundary is a closed polygon — not just a picture on a map. Once the boundary is known, the system can calculate area, perimeter, and everything else that scales per acre or per hectare.")
+        @FormulaCard(
+            "Area (shoelace + haversine)",
+            "A = ½ |Σᵢ (xᵢ yᵢ₊₁ − xᵢ₊₁ yᵢ)|  (projected metres)",
+            "P = Σ haversine(vertexᵢ, vertexᵢ₊₁)  (great-circle metres)")
+
+        @* Controls *@
+        <div class="studio-card controls-row">
+            <label class="control-field">
+                <span class="field-label">Unit</span>
+                <select class="text-input" @bind="_areaUnit">
+                    <option value="acre">Acres</option>
+                    <option value="hectare">Hectares</option>
+                </select>
+            </label>
+            <button class="primary-button" @onclick="RunBoundaryArea" disabled="@_loading">
+                @(_loading ? "Calculating…" : "Calculate")
+            </button>
+            <span class="demo-note">Using demo field: Sunrise Ranch – Block A</span>
+        </div>
+
+        @BlockResult(_boundaryResult)
+        @QuizCard("boundary-area")
+    </div>
+}
+
+@if (_activeId == "terrain-flow")
+{
+    <div class="learn-layout">
+        @ConceptCard("Terrain Flow",
+            "Water always flows downhill. Slope and elevation change determine how fast water moves, where it collects in pooling zones, and where it runs off steep areas.")
+        @FormulaCard(
+            "Slope and flow direction",
+            "slope (%) = (Δ elevation / horizontal distance) × 100",
+            "Flow direction → steepest downhill neighbour (D8 algorithm)")
+
+        <div class="studio-card controls-row">
+            <button class="primary-button" @onclick="RunTerrainFlow" disabled="@_loading">
+                @(_loading ? "Analyzing…" : "Analyze Terrain")
+            </button>
+            <span class="demo-note">Using demo 5×5 elevation grid at 50 m resolution</span>
+        </div>
+
+        @BlockResult(_terrainResult)
+
+        @if (_terrainResult is not null)
+        {
+            <div class="studio-card terrain-stats">
+                <h3 class="section-title">Zone breakdown</h3>
+                <div class="stat-row">
+                    <span>Pooling zones</span>
+                    <strong>@_terrainResult.Computed.GetValueOrDefault("poolingZoneCount", 0)</strong>
+                </div>
+                <div class="stat-row">
+                    <span>Runoff-risk zones</span>
+                    <strong>@_terrainResult.Computed.GetValueOrDefault("runoffZoneCount", 0)</strong>
+                </div>
+                <div class="stat-row">
+                    <span>Points analysed</span>
+                    <strong>@_terrainResult.Computed.GetValueOrDefault("analyzedPoints", 0)</strong>
+                </div>
+            </div>
+        }
+
+        @QuizCard("terrain-flow")
+    </div>
+}
+
+@if (_activeId == "carrying-capacity")
+{
+    <div class="learn-layout">
+        @ConceptCard("Carrying Capacity",
+            "Every field can sustain only so many organisms before resources (water, nutrients, space) become limiting. The logistic model shows how a population grows quickly then slows near K. The Lotka-Volterra model adds a predator-prey dynamic.")
+        @FormulaCard(
+            "Logistic growth / Lotka-Volterra",
+            "dN/dt = r × N × (1 − N/K)   (logistic)",
+            "dX/dt = αX − βXY   dY/dt = δXY − γY   (predator-prey)")
+
+        <div class="studio-card controls-row">
+            <label class="control-field">
+                <span class="field-label">Mode</span>
+                <select class="text-input" @bind="_ccMode">
+                    <option value="logistic">Logistic growth</option>
+                    <option value="predator-prey">Predator-prey</option>
+                </select>
+            </label>
+            @if (_ccMode == "logistic")
+            {
+                <label class="control-field">
+                    <span class="field-label">Initial N</span>
+                    <input type="number" class="text-input narrow" @bind="_ccN0" min="1" step="1" />
+                </label>
+                <label class="control-field">
+                    <span class="field-label">Carrying capacity K</span>
+                    <input type="number" class="text-input narrow" @bind="_ccK" min="1" step="10" />
+                </label>
+                <label class="control-field">
+                    <span class="field-label">Growth rate r</span>
+                    <input type="number" class="text-input narrow" @bind="_ccR" min="0.01" step="0.05" />
+                </label>
+                <label class="control-field">
+                    <span class="field-label">Steps</span>
+                    <input type="number" class="text-input narrow" @bind="_ccSteps" min="10" max="500" step="10" />
+                </label>
+            }
+            <button class="primary-button" @onclick="RunCarryingCapacity" disabled="@_loading">
+                @(_loading ? "Simulating…" : "Simulate")
+            </button>
+        </div>
+
+        @BlockResult(_ccResult)
+
+        @if (_ccResult?.OutputLayers is { Count: > 0 } layers)
+        {
+            var series = layers[0].Attributes;
+            @if (series.ContainsKey("series"))
+            {
+                <div class="studio-card">
+                    <p class="learn-note">
+                        Simulation series available in the output layers. In a production build this
+                        would render as a time-series chart. The computed values are shown above.
+                    </p>
+                </div>
+            }
+        }
+
+        @QuizCard("carrying-capacity")
+    </div>
+}
+
+@code {
+    record BlockMeta(string Id, string Title, string Icon, string Difficulty);
+
+    private readonly List<BlockMeta> _blocks = new()
+    {
+        new("boundary-area",    "Boundary & Area",      "⬡", "beginner"),
+        new("terrain-flow",     "Terrain Flow",         "↗", "beginner"),
+        new("carrying-capacity","Carrying Capacity",    "⌬", "advanced"),
+    };
+
+    private string _activeId = "boundary-area";
+    private bool _loading;
+
+    // Boundary & Area state
+    private string _areaUnit = "acre";
+    private LearningBlockResult? _boundaryResult;
+
+    // Terrain Flow state
+    private LearningBlockResult? _terrainResult;
+
+    // Carrying Capacity state
+    private string _ccMode = "logistic";
+    private double _ccN0 = 10;
+    private double _ccK = 200;
+    private double _ccR = 0.3;
+    private int _ccSteps = 50;
+    private LearningBlockResult? _ccResult;
+
+    // Demo field boundary ring (GeoJSON [lon, lat] → service [lat, lon])
+    private static readonly double[][] DemoRing =
+    {
+        new[] { -119.9200, 36.7400 },
+        new[] { -119.9100, 36.7400 },
+        new[] { -119.9100, 36.7320 },
+        new[] { -119.9200, 36.7320 },
+    };
+
+    // Demo 5×5 elevation grid from demo-field.json
+    private static readonly double[][] DemoElevGrid =
+    {
+        new[] { 78.5, 78.2, 77.8, 77.3, 76.9 },
+        new[] { 78.1, 77.7, 77.2, 76.8, 76.4 },
+        new[] { 77.6, 77.2, 76.7, 76.3, 75.9 },
+        new[] { 77.0, 76.5, 76.1, 75.7, 75.3 },
+        new[] { 76.3, 75.9, 75.4, 75.0, 74.6 },
+    };
+
+    private void SelectBlock(string id)
+    {
+        _activeId = id;
+        _boundaryResult = null;
+        _terrainResult = null;
+        _ccResult = null;
+    }
+
+    private async Task RunBoundaryArea()
+    {
+        _loading = true;
+        _boundaryResult = null;
+        try
+        {
+            _boundaryResult = await Learning.GetBoundaryAreaAsync(DemoRing, _areaUnit);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RunTerrainFlow()
+    {
+        _loading = true;
+        _terrainResult = null;
+        try
+        {
+            _terrainResult = await Learning.GetTerrainFlowAsync(DemoElevGrid, 50, 36.74, -119.92);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RunCarryingCapacity()
+    {
+        _loading = true;
+        _ccResult = null;
+        try
+        {
+            _ccResult = _ccMode == "logistic"
+                ? await Learning.GetCarryingCapacityLogisticAsync(_ccN0, _ccK, _ccR, _ccSteps)
+                : await Learning.GetCarryingCapacityPredatorPreyAsync(40, 9, 0.1, 0.02, 0.01, 0.1, _ccSteps);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    // ── Render helpers ────────────────────────────────────────────────────
+
+    private static RenderFragment ConceptCard(string title, string text) => __builder =>
+    {
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", "studio-card concept-card");
+        __builder.OpenElement(2, "h2");
+        __builder.AddAttribute(3, "class", "section-title");
+        __builder.AddMarkupContent(4, title);
+        __builder.CloseElement();
+        __builder.OpenElement(5, "p");
+        __builder.AddContent(6, text);
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+
+    private static RenderFragment FormulaCard(string title, string line1, string line2) => __builder =>
+    {
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", "studio-card formula-card");
+        __builder.OpenElement(2, "h3");
+        __builder.AddAttribute(3, "class", "formula-title");
+        __builder.AddContent(4, title);
+        __builder.CloseElement();
+        __builder.OpenElement(5, "pre");
+        __builder.AddAttribute(6, "class", "formula-pre");
+        __builder.AddContent(7, line1 + "\n" + line2);
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+
+    private static RenderFragment BlockResult(LearningBlockResult? result) => __builder =>
+    {
+        if (result is null) return;
+
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", "studio-card result-card");
+
+        // Explanation
+        if (!string.IsNullOrEmpty(result.Explanation))
+        {
+            __builder.OpenElement(2, "p");
+            __builder.AddAttribute(3, "class", "result-explanation");
+            __builder.AddContent(4, result.Explanation);
+            __builder.CloseElement();
+        }
+
+        // Warning
+        if (!string.IsNullOrEmpty(result.Warning))
+        {
+            __builder.OpenElement(5, "p");
+            __builder.AddAttribute(6, "class", "result-warning");
+            __builder.AddContent(7, "⚠ " + result.Warning);
+            __builder.CloseElement();
+        }
+
+        // Computed values
+        if (result.Computed.Count > 0)
+        {
+            __builder.OpenElement(8, "dl");
+            __builder.AddAttribute(9, "class", "computed-grid");
+
+            foreach (var kv in result.Computed)
+            {
+                __builder.OpenElement(10, "div");
+                __builder.OpenElement(11, "dt");
+                __builder.AddContent(12, FormatKey(kv.Key));
+                __builder.CloseElement();
+                __builder.OpenElement(13, "dd");
+                __builder.AddContent(14, kv.Value.ToString("G4", CultureInfo.InvariantCulture));
+                __builder.CloseElement();
+                __builder.CloseElement();
+            }
+
+            __builder.CloseElement();
+        }
+
+        __builder.CloseElement();
+    };
+
+    private RenderFragment QuizCard(string blockId) => __builder =>
+    {
+        var contentFile = blockId switch
+        {
+            "boundary-area" => _baContent,
+            "terrain-flow" => _tfContent,
+            "carrying-capacity" => _ccContent,
+            _ => null,
+        };
+
+        if (contentFile is null) return;
+
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", "studio-card quiz-card");
+        __builder.OpenElement(2, "h3");
+        __builder.AddAttribute(3, "class", "section-title");
+        __builder.AddContent(4, "Practice Question");
+        __builder.CloseElement();
+        __builder.OpenElement(5, "p");
+        __builder.AddAttribute(6, "class", "quiz-question");
+        __builder.AddContent(7, contentFile.Question);
+        __builder.CloseElement();
+
+        if (_showAnswer)
+        {
+            __builder.OpenElement(8, "p");
+            __builder.AddAttribute(9, "class", "quiz-answer");
+            __builder.AddContent(10, contentFile.Answer);
+            __builder.CloseElement();
+        }
+
+        __builder.OpenElement(11, "button");
+        __builder.AddAttribute(12, "class", "secondary-button");
+        __builder.AddAttribute(13, "onclick", EventCallback.Factory.Create(this, () => _showAnswer = !_showAnswer));
+        __builder.AddContent(14, _showAnswer ? "Hide answer" : "Show answer");
+        __builder.CloseElement();
+
+        __builder.CloseElement();
+    };
+
+    // Inline quiz data (subset from learning-content.json)
+    record QuizData(string Question, string Answer);
+
+    private readonly QuizData _baContent = new(
+        "A square field is 1 mile on each side. What is its approximate area in acres?",
+        "640 acres (1 square mile = 640 acres)");
+
+    private readonly QuizData _tfContent = new(
+        "If elevation drops 5 feet over 200 feet of horizontal distance, what is the slope percentage?",
+        "2.5% (5 / 200 × 100 = 2.5%)");
+
+    private readonly QuizData _ccContent = new(
+        "What happens to population growth rate as N approaches K in the logistic model?",
+        "Growth rate approaches zero — the population levels off at the carrying capacity.");
+
+    private bool _showAnswer;
+
+    private static string FormatKey(string key)
+    {
+        // "areaAcres" → "Area acres"
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in key)
+        {
+            if (char.IsUpper(c) && sb.Length > 0) sb.Append(' ');
+            sb.Append(sb.Length == 0 ? char.ToUpperInvariant(c) : c);
+        }
+        return sb.ToString();
+    }
+}

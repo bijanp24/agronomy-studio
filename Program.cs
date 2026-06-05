@@ -16,6 +16,8 @@ var nasaApi = builder.Configuration["Api:NasaApi"] ?? "https://api.nasa.gov";
 var openMeteoApi = builder.Configuration["Api:OpenMeteoApi"] ?? "https://api.open-meteo.com";
 var agronomyApi = builder.Configuration["Api:AgronomyApi"] ?? "/agronomy-api";
 var aiSearchApi = builder.Configuration["Api:AiSearchApi"] ?? "/ai-search-api";
+var spatialApi = builder.Configuration["Api:SpatialApi"] ?? "/spatial-api";
+var transferApi = builder.Configuration["Api:TransferApi"] ?? "/transfer-api";
 
 builder.Services.AddSingleton<LogService>();
 builder.Services.AddScoped<NotificationService>();
@@ -44,6 +46,8 @@ AddApiClient(ApiClients.Space, nasaApi);
 AddApiClient(ApiClients.Forecast, openMeteoApi);
 AddApiClient(ApiClients.Agronomy, agronomyApi);
 AddApiClient(ApiClients.AiSearch, aiSearchApi);
+AddApiClient(ApiClients.Spatial, spatialApi);
+AddApiClient(ApiClients.Transfer, transferApi);
 
 builder.Services.AddHttpClient(ApiClients.AirQuality,
     c => c.BaseAddress = new Uri("https://airquality.googleapis.com/"));
@@ -63,5 +67,8 @@ builder.Services.AddScoped<AiSearchService>();
 builder.Services.AddScoped<AirQualityService>();
 builder.Services.AddScoped<SolarService>();
 builder.Services.AddScoped<DemoFieldData>();
+builder.Services.AddScoped<LearningService>();
+builder.Services.AddScoped<AiOrchestrationService>();
+builder.Services.AddScoped<TransferService>();
 
 await builder.Build().RunAsync();

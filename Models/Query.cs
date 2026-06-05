@@ -37,3 +37,20 @@ public sealed record QueryHistoryEntry
     public string Timestamp { get; init; } = "";
     public int RowCount { get; init; }
 }
+
+/// <summary>
+/// A saved "dashboard story" — a named, persistent query with its SQL preview and
+/// natural-language summary. Stories are persisted in browser local storage so the user
+/// can build a personal library of insights. See issue #25.
+/// </summary>
+public sealed record DashboardStory
+{
+    public string Id { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Question { get; init; } = "";
+    public string Sql { get; init; } = "";
+    public string Summary { get; init; } = "";
+    public int RowCount { get; init; }
+    public string SavedAt { get; init; } = "";
+    public string Provider { get; init; } = "mock";
+}

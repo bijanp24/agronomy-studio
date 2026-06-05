@@ -1,0 +1,77 @@
+[
+  {
+    "blockId": "boundary-area",
+    "beginnerExplanation": "A field boundary is not just a picture on a map — it is a closed polygon that can be measured. Once we know the boundary, the system can calculate area, perimeter, row-planning estimates, operation coverage, and zone sizes. Think of it as drawing a fence around your field: the fence has a length (perimeter) and the land inside has a size (area).",
+    "formulaView": "**Shoelace formula (signed area of a flat polygon):**\n\nA = ½ |Σᵢ (xᵢ yᵢ₊₁ − xᵢ₊₁ yᵢ)|\n\nBecause field coordinates are longitude/latitude pairs on a sphere, the calculation uses the **haversine formula** to find the true great-circle distance between each pair of boundary vertices before applying the shoelace area calculation. This gives area in acres or hectares depending on the unit preference.\n\n**Perimeter:**\n\nP = Σ haversine(vertexᵢ, vertexᵢ₊₁)\n\nfor each edge of the boundary polygon.",
+    "mapView": "The field boundary is rendered as a closed polygon on the map. Area and perimeter are shown in the info panel beside the map. Vertices can be inspected by hovering.",
+    "simulationView": "Adjust the field shape by moving vertices and watch area and perimeter update in real time. Try adding irrigation lanes (strips) to see how internal boundaries change the usable area.",
+    "quizQuestions": [
+      {
+        "question": "A square field is 1 mile on each side. What is its approximate area in acres?",
+        "answer": "640 acres (1 square mile = 640 acres)",
+        "choices": ["64 acres", "320 acres", "640 acres", "1280 acres"]
+      },
+      {
+        "question": "Which formula is used to calculate the true distance between two latitude/longitude points on Earth?",
+        "answer": "The haversine formula",
+        "choices": ["Pythagorean theorem", "Haversine formula", "Shoelace formula", "Euler's formula"]
+      }
+    ],
+    "recommendationExplanation": "Once you know the precise field area, all per-acre or per-hectare calculations (fertiliser rates, seed quantities, irrigation volumes, harvest estimates) automatically scale correctly. Boundary area is the foundation of every downstream calculation in the system."
+  },
+  {
+    "blockId": "terrain-flow",
+    "beginnerExplanation": "Water always flows downhill. The slope of your field — how steeply the elevation changes over distance — determines how fast water moves, where it collects, and where it runs off. A gentle slope means water moves slowly and has more time to soak in. A steep slope means water moves fast and may carry topsoil or leave some zones dry while pooling water in others. Understanding terrain flow helps you plan irrigation, drainage, and soil conservation.",
+    "formulaView": "**Slope:**\n\nslope (%) = (elevation change / horizontal distance) × 100\n\nFor example, if elevation drops 2 metres over 100 metres of horizontal distance, slope = 2%.\n\n**Flow direction** is determined by finding the neighbouring cell or vertex with the steepest downhill gradient — the direction of maximum slope descent.\n\n**Pooling risk** is identified at local minima: points where all neighbouring elevations are higher than the point itself.",
+    "mapView": "Slope is rendered as a colour-coded heat overlay from green (flat) to red (steep). Vector arrows show the estimated flow direction at each point. Blue markers indicate potential pooling zones (local minima).",
+    "simulationView": "Add a virtual rainfall event and watch the flow simulation animate water movement across the field from high to low elevation. Toggle between slope view and flow-direction view.",
+    "quizQuestions": [
+      {
+        "question": "If elevation drops 5 feet over 200 feet of horizontal distance, what is the slope percentage?",
+        "answer": "2.5% (5 / 200 × 100 = 2.5%)",
+        "choices": ["0.025%", "0.25%", "2.5%", "25%"]
+      },
+      {
+        "question": "What happens to water movement as slope increases?",
+        "answer": "Water moves faster and runoff increases, leaving less time for infiltration into the soil.",
+        "choices": [
+          "Water moves slower and pools more",
+          "Water moves faster and runoff increases",
+          "Slope has no effect on water movement",
+          "Water evaporates before it moves"
+        ]
+      }
+    ],
+    "recommendationExplanation": "Use terrain flow analysis to position drip lines along contours, design berms or drainage channels, and identify zones that need extra irrigation (ridges and high-slope areas) or drainage management (depressions and pooling zones)."
+  },
+  {
+    "blockId": "carrying-capacity",
+    "beginnerExplanation": "Every field can support only so many plants, animals, or organisms before resources — water, nutrients, space, light — become limiting. This maximum sustainable population is called the **carrying capacity** (K). The logistic growth model shows how a population grows quickly at first, then slows as it approaches K, and levels off when resources are fully used. In predator-prey systems, two populations cycle in opposite phases: more prey → more predators → fewer prey → fewer predators → cycle repeats.",
+    "formulaView": "**Logistic growth:**\n\ndN/dt = r × N × (1 − N/K)\n\nwhere N = current population, r = intrinsic growth rate, K = carrying capacity.\n\n**Lotka-Volterra predator-prey:**\n\ndX/dt = αX − βXY  (prey: grows at α, lost to predator contact βXY)\ndY/dt = δXY − γY  (predator: gains from prey δXY, dies at γ)\n\nwhere X = prey population, Y = predator population, α β δ γ = interaction rates.",
+    "mapView": "Population density is shown as a colour gradient over the field. The time-series chart shows logistic S-curve growth or predator-prey oscillations over a simulated season.",
+    "simulationView": "Adjust carrying capacity K or growth rate r to see how the logistic curve changes shape. In predator-prey mode, change the interaction rates to observe stable cycles, damped oscillations, or population collapse.",
+    "quizQuestions": [
+      {
+        "question": "What happens to population growth rate as N approaches K in the logistic model?",
+        "answer": "Growth rate approaches zero — the population levels off at the carrying capacity.",
+        "choices": [
+          "Growth rate increases exponentially",
+          "Growth rate approaches zero",
+          "Growth rate becomes negative immediately",
+          "Growth rate stays constant"
+        ]
+      },
+      {
+        "question": "In a predator-prey cycle, what typically follows a peak in prey population?",
+        "answer": "A peak in predator population (with a time lag), followed by a decline in both.",
+        "choices": [
+          "An immediate decline in predators",
+          "A peak in predator population after a time lag",
+          "Prey population stays at peak",
+          "Both populations collapse simultaneously"
+        ]
+      }
+    ],
+    "recommendationExplanation": "Use carrying capacity estimates to set plant populations, stocking rates, or beneficial-insect release densities that keep ecosystems within sustainable limits. Exceeding K consistently leads to resource depletion and population crashes."
+  }
+]
