@@ -5,10 +5,6 @@ import {
   MOCK_RISK_SUMMARY,
   MOCK_BENCHMARK,
   MOCK_CLUSTERS,
-  type YieldPrediction,
-  type OptimizationResult,
-  type RiskAssessment,
-  type BenchmarkResult,
 } from '../ml';
 
 // ---------------------------------------------------------------------------

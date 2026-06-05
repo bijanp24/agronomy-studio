@@ -36,7 +36,7 @@
             <select class="studio-select" @onchange="OnFieldChanged">
                 @foreach (var f in _fields)
                 {
-                    <option value="@f.Id|@f.Crop">@f.Name — @f.Crop</option>
+                    <option value="@f.FieldId|@f.Crop">@f.FieldName — @f.Crop</option>
                 }
             </select>
             <select class="studio-select" @bind="_cropYear">
@@ -103,7 +103,7 @@
 }
 
 @code {
-    private List<Field> _fields = new();
+    private List<FieldSummary> _fields = new();
     private List<MlClusterInfo> _clusters = new();
     private string _selectedFieldId = "";
     private string _selectedCrop = "almond";
@@ -117,15 +117,18 @@
     {
         try
         {
-            var fieldsTask = FieldService.GetFieldsAsync();
+            var summaryTask = FieldService.GetDashboardSummaryAsync();
             var clustersTask = MlService.GetClustersAsync();
-            await Task.WhenAll(fieldsTask, clustersTask);
+            await Task.WhenAll(summaryTask, clustersTask);
 
-            _fields = fieldsTask.Result?.Fields ?? new();
+            _fields = summaryTask.Result?.Fields ?? new();
             _clusters = clustersTask.Result?.Clusters ?? new();
 
             if (_fields.Count > 0)
-                _selectedFieldId = _fields[0].Id;
+            {
+                _selectedFieldId = _fields[0].FieldId;
+                _selectedCrop = string.IsNullOrEmpty(_fields[0].Crop) ? "almond" : _fields[0].Crop;
+            }
         }
         catch (Exception ex)
         {
@@ -141,7 +144,7 @@
     {
         var parts = (e.Value?.ToString() ?? "").Split('|');
         _selectedFieldId = parts.Length > 0 ? parts[0] : "";
-        _selectedCrop = parts.Length > 1 ? parts[1] : "almond";
+        _selectedCrop = parts.Length > 1 && !string.IsNullOrEmpty(parts[1]) ? parts[1] : "almond";
     }
 
     private async Task RunBenchmark()
