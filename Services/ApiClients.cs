@@ -16,4 +16,5 @@ public static class ApiClients
     public const string Spatial = "spatial-api";
     public const string Transfer = "transfer-api";
     public const string Ml = "ml-api";
+    public const string Gis = "gis-api";
 }

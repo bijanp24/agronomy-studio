@@ -14,6 +14,7 @@
     "AgronomyApi": "http://localhost:4310",
     "AiSearchApi": "http://localhost:4312",
     "SpatialApi": "http://localhost:4316",
-    "TransferApi": "http://localhost:4318"
+    "TransferApi": "http://localhost:4318",
+    "GisApi": "http://localhost:4322"
   }
 }

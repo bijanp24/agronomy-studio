@@ -96,6 +96,11 @@
   status = 200
 
 [[redirects]]
+  from = "/gis-api/*"
+  to = "/.netlify/functions/gis-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/nasa-api/*"
   to = "/.netlify/functions/nasa-api/:splat"
   status = 200

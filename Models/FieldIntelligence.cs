@@ -27,6 +27,7 @@ public sealed record Field
     public double AreaHectares { get; init; }
     public string BoundaryGeoJson { get; init; } = "";
     public string SoilType { get; init; } = "";
+    public string Crop { get; init; } = "";
     public string Notes { get; init; } = "";
 }
 

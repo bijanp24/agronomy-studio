@@ -19,6 +19,7 @@ var aiSearchApi = builder.Configuration["Api:AiSearchApi"] ?? "/ai-search-api";
 var spatialApi = builder.Configuration["Api:SpatialApi"] ?? "/spatial-api";
 var transferApi = builder.Configuration["Api:TransferApi"] ?? "/transfer-api";
 var mlApi = builder.Configuration["Api:MlApi"] ?? "/ml-api";
+var gisApi = builder.Configuration["Api:GisApi"] ?? "/gis-api";
 
 builder.Services.AddSingleton<LogService>();
 builder.Services.AddScoped<NotificationService>();
@@ -50,6 +51,7 @@ AddApiClient(ApiClients.AiSearch, aiSearchApi);
 AddApiClient(ApiClients.Spatial, spatialApi);
 AddApiClient(ApiClients.Transfer, transferApi);
 AddApiClient(ApiClients.Ml, mlApi);
+AddApiClient(ApiClients.Gis, gisApi);
 
 builder.Services.AddHttpClient(ApiClients.AirQuality,
     c => c.BaseAddress = new Uri("https://airquality.googleapis.com/"));
@@ -73,5 +75,6 @@ builder.Services.AddScoped<LearningService>();
 builder.Services.AddScoped<AiOrchestrationService>();
 builder.Services.AddScoped<TransferService>();
 builder.Services.AddScoped<MlService>();
+builder.Services.AddScoped<GisOverlayService>();
 
 await builder.Build().RunAsync();

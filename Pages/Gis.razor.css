@@ -260,6 +260,348 @@
     font-style: italic;
 }
 
+/* -------------------------------------------------------------------------
+   Frost alert banner
+   ------------------------------------------------------------------------- */
+.frost-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    background: color-mix(in srgb, #60a5fa 12%, var(--theme-surface));
+    border: 1px solid #60a5fa;
+    border-left: 4px solid #60a5fa;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--theme-text);
+}
+
+/* -------------------------------------------------------------------------
+   Season selector
+   ------------------------------------------------------------------------- */
+.season-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding: 10px 16px;
+}
+
+.season-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--theme-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.season-slider-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.season-chip {
+    border: 1px solid var(--theme-border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--theme-surface);
+    color: var(--theme-muted);
+    cursor: pointer;
+    transition: all .15s;
+}
+
+.season-chip:hover {
+    background: var(--theme-primary-soft);
+    color: var(--theme-primary);
+}
+
+.season-chip--active {
+    background: var(--theme-primary, #2563eb);
+    color: #fff;
+    border-color: var(--theme-primary, #2563eb);
+}
+
+.season-note {
+    font-size: 12px;
+    color: var(--theme-muted);
+    font-style: italic;
+}
+
+/* -------------------------------------------------------------------------
+   Legend title
+   ------------------------------------------------------------------------- */
+.legend-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--theme-text);
+    margin-right: 4px;
+}
+
+/* -------------------------------------------------------------------------
+   GDD progress bar
+   ------------------------------------------------------------------------- */
+.gdd-bar-wrap {
+    background: var(--theme-border-subtle);
+    border-radius: 4px;
+    height: 6px;
+    margin: 4px 0 2px;
+    overflow: hidden;
+}
+
+.gdd-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #1d4ed8, #f59e0b, #ea580c);
+    border-radius: 4px;
+    transition: width .3s;
+}
+
+.gdd-pct {
+    font-size: 11px;
+    color: var(--theme-muted);
+}
+
+/* -------------------------------------------------------------------------
+   Frost risk chip
+   ------------------------------------------------------------------------- */
+.frost-chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: capitalize;
+}
+
+.frost-chip--none { background: #dcfce7; color: #15803d; }
+.frost-chip--low { background: #fef9c3; color: #a16207; }
+.frost-chip--moderate { background: #fed7aa; color: #c2410c; }
+.frost-chip--high { background: #dbeafe; color: #1d4ed8; }
+
+/* -------------------------------------------------------------------------
+   Soil-moisture probe sparklines
+   ------------------------------------------------------------------------- */
+.probe-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+}
+
+.probe-depth {
+    width: 36px;
+    font-size: 11px;
+    color: var(--theme-muted);
+    flex-shrink: 0;
+}
+
+.probe-bar-wrap {
+    flex: 1;
+    background: var(--theme-border-subtle);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+}
+
+.probe-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #dc2626, #fbbf24, #1d4ed8);
+    border-radius: 4px;
+    transition: width .3s;
+}
+
+.probe-val {
+    width: 44px;
+    font-size: 11px;
+    color: var(--theme-text);
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.stale-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #92400e;
+    background: #fef3c7;
+    border-radius: 6px;
+    padding: 3px 8px;
+    margin-bottom: 6px;
+}
+
+/* -------------------------------------------------------------------------
+   VRA Prescription Builder
+   ------------------------------------------------------------------------- */
+.vra-card {
+    margin-bottom: 16px;
+}
+
+.vra-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.vra-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--theme-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.badge-beta {
+    font-size: 10px;
+    font-weight: 700;
+    background: #fef9c3;
+    color: #92400e;
+    padding: 2px 7px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.vra-hint {
+    font-size: 13px;
+    color: var(--theme-muted);
+    margin: 0 0 10px;
+}
+
+.vra-zones {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.vra-zone-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    padding: 5px 8px;
+    background: var(--theme-surface-hover);
+    border-radius: 6px;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--theme-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    margin-left: auto;
+}
+
+.btn-icon:hover { color: var(--theme-danger); }
+
+.vra-rates-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--theme-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin: 0 0 8px;
+}
+
+.vra-rate-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.vra-rate-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--theme-muted);
+}
+
+.text-input--sm {
+    padding: 5px 8px;
+    font-size: 13px;
+}
+
+.vra-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.vra-export-result {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #15803d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.vra-iso-note {
+    font-size: 11px;
+    color: var(--theme-muted);
+    font-style: italic;
+    margin: 6px 0 0;
+}
+
+.btn-sm {
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all .15s;
+}
+
+.btn-primary {
+    background: var(--theme-primary, #2563eb);
+    color: #fff;
+    border-color: var(--theme-primary, #2563eb);
+}
+
+.btn-primary:hover:not(:disabled) { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-secondary {
+    background: var(--theme-info-soft);
+    color: var(--theme-info);
+    border-color: var(--theme-info-soft);
+}
+
+.btn-outline {
+    background: var(--theme-surface);
+    color: var(--theme-text);
+    border-color: var(--theme-border);
+}
+
+.btn-outline:hover { background: var(--theme-surface-hover); }
+
+/* VRA selected row highlight in table */
+.row-selected {
+    background: color-mix(in srgb, var(--theme-primary, #2563eb) 10%, transparent) !important;
+}
+
 @media (max-width: 768px) {
     .map-container {
         height: 260px;
@@ -267,5 +609,9 @@
 
     .block-detail-grid {
         grid-template-columns: 1fr;
+    }
+
+    .vra-rate-grid {
+        grid-template-columns: 1fr 1fr;
     }
 }

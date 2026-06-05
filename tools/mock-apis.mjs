@@ -1072,6 +1072,164 @@ listen(createNasaApi(), 4314, 'NASA open APIs (mock)');
 listen(createSpatialApi(), 4316, 'spatial-engine');
 listen(createTransferApi(), 4318, 'transfer-hub');
 listen(createMlApi(), 4320, 'ml-service');
+listen(createGisApi(), 4322, 'gis-overlay-engine');
+
+// ---------------------------------------------------------------------------
+// GIS overlay API mock (port 4322)
+// ---------------------------------------------------------------------------
+
+function createGisApi() {
+  // Deterministic hash identical to netlify/lib/gis.ts
+  function h(s) {
+    let v = 5381;
+    for (let i = 0; i < s.length; i++) v = ((v * 33) ^ s.charCodeAt(i)) >>> 0;
+    return v;
+  }
+  function seed(...parts) { return h(parts.join('|')); }
+  function norm01(s) { return (s % 10_000) / 10_000; }
+
+  const CROP_CLASS = { almond: 'permanent', pistachio: 'permanent', walnut: 'permanent', citrus: 'permanent', grape: 'permanent', olive: 'permanent' };
+  const GDD_BASE = { almond: 10, pistachio: 10, walnut: 10, citrus: 13, grape: 10, tomato: 10, corn: 10, cotton: 15.6, wheat: 0, alfalfa: 5 };
+  const GDD_THRESH = { almond: 1400, pistachio: 1600, walnut: 1800, citrus: 2000, grape: 1500, tomato: 1100, corn: 2700, cotton: 2200, wheat: 1200, alfalfa: 800 };
+  const SOIL_AWC = { 'hanford sandy loam': 0.11, 'san joaquin loam': 0.16, 'tujunga loamy sand': 0.09, 'yolo silt loam': 0.18, 'merced clay loam': 0.20 };
+  const YIELD_BASELINE = { almond: 4100, pistachio: 2950, walnut: 3800, citrus: 32000, grape: 14000, tomato: 85000, corn: 12000, cotton: 1200, wheat: 5500, alfalfa: 18000 };
+  const SEASON_NOTES = {
+    '2021': 'Drought year — reduced irrigation allocation across SJV.',
+    '2022': 'Moderate year — above-average spring rain offset ET demand.',
+    '2023': 'Wet year — atmospheric river events; delayed planting for annuals.',
+    '2024': 'Near-normal year — good early-season moisture.',
+    '2025': 'Current season — data through end of growing season.',
+  };
+
+  function vegetationIndex(b, indexType) {
+    const cloudSeed = seed(b.blockId, b.season, 'cloud');
+    const cloudFree = (cloudSeed % 10) !== 0;
+    const cls = CROP_CLASS[b.cropType?.toLowerCase()] ?? 'annual';
+    const valueSeed = seed(b.blockId, b.season, indexType);
+    let base = cls === 'permanent' ? 0.62 : 0.45;
+    let range = cls === 'permanent' ? 0.23 : 0.35;
+    if (b.cropType?.toLowerCase() === 'wheat') { base = 0.18; range = 0.30; }
+    if (indexType === 'evi' && cls === 'permanent') { base -= 0.07; range *= 0.85; }
+    const raw = cloudFree ? base + norm01(valueSeed) * range : 0;
+    const value = parseFloat(Math.min(1, Math.max(0, raw)).toFixed(3));
+    const stressLevel = value > 0.65 ? 'low' : value > 0.45 ? 'moderate' : 'high';
+    return { blockId: b.blockId, indexType, value, cloudFree, stressLevel, source: 'mock' };
+  }
+
+  function gddAccumulation(b) {
+    const s = seed(b.blockId, b.season, 'gdd');
+    const base = GDD_BASE[b.cropType?.toLowerCase()] ?? 10;
+    const threshold = GDD_THRESH[b.cropType?.toLowerCase()] ?? 1200;
+    const meanTempC = 22 + norm01(s) * 6 - (b.elevationM ?? 85) * 0.006;
+    const effectiveDegDay = Math.max(0, meanTempC - base);
+    const daysSeed = seed(b.blockId, b.season, 'days');
+    const daysInSeason = 160 + Math.round(norm01(daysSeed) * 30);
+    const gddAccumulated = parseFloat((effectiveDegDay * daysInSeason).toFixed(0));
+    const percentComplete = parseFloat(Math.min(100, (gddAccumulated / threshold) * 100).toFixed(1));
+    return { blockId: b.blockId, gddAccumulated, gddBase: base, cropThreshold: threshold, percentComplete, daysInSeason, source: 'mock' };
+  }
+
+  function microclimateSummary(b) {
+    const s = seed(b.blockId, b.season, 'mc');
+    const etS = seed(b.blockId, b.season, 'et');
+    const windS = seed(b.blockId, b.season, 'wind');
+    const elevationM = b.elevationM ?? 85;
+    const referenceEtMmDay = parseFloat((3 + norm01(etS) * 5).toFixed(2));
+    const elevFactor = Math.min(1, elevationM / 300);
+    const frostRiskScore = parseFloat(Math.min(1, norm01(s) * 0.4 + elevFactor * 0.6).toFixed(3));
+    const frostRiskLevel = frostRiskScore > 0.7 ? 'high' : frostRiskScore > 0.4 ? 'moderate' : frostRiskScore > 0.15 ? 'low' : 'none';
+    const windSpeedMph = parseFloat((2 + norm01(windS) * 18).toFixed(1));
+    const windDirectionDeg = Math.round(norm01(seed(b.blockId, b.season, 'wdir')) * 360);
+    return { blockId: b.blockId, referenceEtMmDay, frostRiskScore, frostRiskLevel, windSpeedMph, windDirectionDeg, source: 'mock' };
+  }
+
+  function soilMoistureProbe(b) {
+    const awc = SOIL_AWC[b.soilType?.toLowerCase()] ?? 0.14;
+    const fcPct = (awc + 0.05) * 100;
+    const v12 = parseFloat((fcPct * 0.4 + norm01(seed(b.blockId, b.season, 'vwc12')) * fcPct * 0.4).toFixed(1));
+    const v24 = parseFloat((fcPct * 0.5 + norm01(seed(b.blockId, b.season, 'vwc24')) * fcPct * 0.3).toFixed(1));
+    const v36 = parseFloat((fcPct * 0.6 + norm01(seed(b.blockId, b.season, 'vwc36')) * fcPct * 0.3).toFixed(1));
+    const avgVwc = (v12 + v24 + v36) / 3;
+    const deficitPct = parseFloat(Math.max(0, 100 - (avgVwc / fcPct) * 100).toFixed(1));
+    const irrigationNeedIn = parseFloat((deficitPct * awc * 24 / 100).toFixed(2));
+    const ageSeed = seed(b.blockId, b.season, 'age');
+    const lastReadingAgeHours = 2 + (ageSeed % 47);
+    return {
+      blockId: b.blockId, probeId: `probe-${b.blockId}`,
+      readings: [{ depthIn: 12, vwcPct: v12 }, { depthIn: 24, vwcPct: v24 }, { depthIn: 36, vwcPct: v36 }],
+      deficitPct, irrigationNeedIn, lastReadingAgeHours, stale: lastReadingAgeHours > 24, source: 'mock',
+    };
+  }
+
+  function seasonSnapshot(b) {
+    const year = parseInt(b.season, 10);
+    const yearMod = (year % 2 === 0) ? 1.05 : 0.97;
+    const ys = seed(b.blockId, b.season, 'yield');
+    const baseline = YIELD_BASELINE[b.cropType?.toLowerCase()] ?? 4000;
+    const yieldEstimateKgHa = Math.round(baseline * yearMod * (0.88 + norm01(ys) * 0.24));
+    const veg = vegetationIndex(b, 'ndvi');
+    const gdd = gddAccumulation(b);
+    const mc = microclimateSummary(b);
+    return {
+      blockId: b.blockId, season: b.season, cropType: b.cropType,
+      irrigationZone: b.irrigationZone ?? '', ndvi: veg.value,
+      gddAccumulated: gdd.gddAccumulated, referenceEtMmDay: mc.referenceEtMmDay,
+      yieldEstimateKgHa, note: SEASON_NOTES[b.season] ?? `Season ${b.season}`, source: 'mock',
+    };
+  }
+
+  function buildVraPrescription(zones) {
+    const features = zones.map(z => ({
+      type: 'Feature', id: z.blockId,
+      properties: { blockId: z.blockId, cropType: z.cropType, nitrogen_lb_ac: z.rates?.nitrogenLbAc ?? 0, phosphorus_lb_ac: z.rates?.phosphorusLbAc ?? 0, potassium_lb_ac: z.rates?.potassiumLbAc ?? 0, seed_lb_ac: z.rates?.seedLbAc ?? 0, prescription_source: 'agronomy-studio-mock' },
+      geometry: { type: 'Polygon', coordinates: [z.coordinates] },
+    }));
+    const header = 'blockId,cropType,nitrogen_lb_ac,phosphorus_lb_ac,potassium_lb_ac,seed_lb_ac';
+    const rows = zones.map(z => [z.blockId, z.cropType, z.rates?.nitrogenLbAc ?? 0, z.rates?.phosphorusLbAc ?? 0, z.rates?.potassiumLbAc ?? 0, z.rates?.seedLbAc ?? 0].join(','));
+    return { exportId: `vra-${Date.now()}`, format: 'geojson+csv', blockCount: zones.length, geojson: { type: 'FeatureCollection', features }, csv: [header, ...rows].join('\n'), isoXmlNote: 'ISO-XML (ISOBUS TaskData) export is planned. See docs/gis-overlays.md for the format compatibility matrix.', generatedAt: new Date().toISOString() };
+  }
+
+  return http.createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost:4322');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
+      res.end(); return;
+    }
+    const path = url.pathname;
+    const body = req.method === 'POST' ? await readBody(req) : {};
+
+    if (path === '/api/gis/health' || path === '/') { sendJson(res, 200, { status: 'ok', demo_mode: true }); return; }
+
+    if (path === '/api/gis/vegetation') {
+      const blocks = body.blocks ?? [];
+      const indexType = body.indexType ?? 'ndvi';
+      sendJson(res, 200, { indexType, results: blocks.map(b => vegetationIndex(b, indexType)) }); return;
+    }
+    if (path === '/api/gis/gdd') {
+      const blocks = body.blocks ?? [];
+      sendJson(res, 200, { results: blocks.map(b => gddAccumulation(b)) }); return;
+    }
+    if (path === '/api/gis/microclimate') {
+      const blocks = body.blocks ?? [];
+      sendJson(res, 200, { results: blocks.map(b => microclimateSummary(b)) }); return;
+    }
+    if (path === '/api/gis/soil-moisture') {
+      const blocks = body.blocks ?? [];
+      sendJson(res, 200, { results: blocks.map(b => soilMoistureProbe(b)) }); return;
+    }
+    if (path === '/api/gis/timeline') {
+      const blocks = body.blocks ?? [];
+      const seasons = body.seasons ?? ['2021', '2022', '2023', '2024', '2025'];
+      const snapshots = seasons.flatMap(season => blocks.map(b => seasonSnapshot({ ...b, season })));
+      sendJson(res, 200, { seasons, snapshots }); return;
+    }
+    if (path === '/api/gis/vra/export') {
+      const zones = body.zones ?? [];
+      sendJson(res, 200, buildVraPrescription(zones)); return;
+    }
+    notFound(res, path);
+  });
+}
 
 // ---------------------------------------------------------------------------
 // ML API mock (port 4320)
