@@ -83,7 +83,7 @@ public sealed class LearningService
         return PostAsync<LearningBlockResult>("api/spatial/carrying-capacity", body, ct);
     }
 
-    public Task<JsonElement?> GetDemoFieldAsync(CancellationToken ct = default) =>
+    public Task<JsonElement> GetDemoFieldAsync(CancellationToken ct = default) =>
         _http.GetFromJsonAsync<JsonElement>("api/spatial/demo", ct);
 
     private async Task<T?> PostAsync<T>(string path, object body, CancellationToken ct)
