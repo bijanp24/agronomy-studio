@@ -86,6 +86,11 @@
   status = 200
 
 [[redirects]]
+  from = "/ml-api/*"
+  to = "/.netlify/functions/ml-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/ai-orchestration-api/*"
   to = "/.netlify/functions/ai-orchestration-api/:splat"
   status = 200

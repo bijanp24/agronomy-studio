@@ -2,6 +2,7 @@
 @page "/dashboard"
 @using System.Globalization
 @inject FieldIntelligenceService FieldService
+@inject MlService MlService
 @inject NavigationManager Navigation
 
 <PageTitle>Dashboard · Agronomy Studio</PageTitle>
@@ -72,11 +73,13 @@
                         <th>Stress</th>
                         <th>Predicted Yield</th>
                         <th>Confidence</th>
+                        <th>ML Risk</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var f in _fields)
                     {
+                        var risk = _riskByField.TryGetValue(f.FieldId, out var r) ? r : null;
                         <tr>
                             <td>@f.FieldName</td>
                             <td class="capitalize">@f.Crop</td>
@@ -87,6 +90,18 @@
                             </td>
                             <td>@YieldTonnes(f.PredictedYieldKgPerHa) t/ha</td>
                             <td><span class="conf-chip conf-@f.Confidence">@f.Confidence</span></td>
+                            <td>
+                                @if (risk is not null)
+                                {
+                                    <span class="stress-chip stress-@risk.RiskLabel" title="Anomaly score: @risk.AnomalyScore.ToString("F2")">
+                                        @risk.RiskLabel
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="dash-placeholder">—</span>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -97,6 +112,7 @@
 
 @code {
     private List<FieldSummary> _fields = new();
+    private Dictionary<string, MlRiskAssessment> _riskByField = new();
     private bool _loading = true;
     private bool _hasError;
 
@@ -117,8 +133,16 @@
     {
         try
         {
-            var summary = await FieldService.GetDashboardSummaryAsync();
-            _fields = summary?.Fields ?? new();
+            var summaryTask = FieldService.GetDashboardSummaryAsync();
+            var riskTask = MlService.GetRiskSummaryAsync(cropYear: 2026);
+            await Task.WhenAll(summaryTask, riskTask);
+
+            _fields = summaryTask.Result?.Fields ?? new();
+            var riskSummary = riskTask.Result;
+            if (riskSummary?.Fields is not null)
+            {
+                _riskByField = riskSummary.Fields.ToDictionary(r => r.FieldId, r => r);
+            }
         }
         catch
         {

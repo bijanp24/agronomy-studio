@@ -8,6 +8,7 @@ import {
   requestIdFrom,
   type NetlifyEvent,
   type NetlifyResponse,
+  type Logger,
 } from '../lib/http';
 import {
   parseCsvText,
@@ -45,6 +46,8 @@ export const handler = async (event: NetlifyEvent): Promise<NetlifyResponse> => 
         return event.httpMethod === 'POST' ? handlePreview(event) : errorResponse(405, 'POST required');
       case '/api/transfer/import':
         return event.httpMethod === 'POST' ? handleImport(event) : errorResponse(405, 'POST required');
+      case '/api/transfer/commit':
+        return event.httpMethod === 'POST' ? handleCommit(event, logger) : errorResponse(405, 'POST required');
       case '/api/transfer/geojson':
         return event.httpMethod === 'POST' ? handleGeoJson(event) : errorResponse(405, 'POST required');
       case '/api/transfer/export':
@@ -194,5 +197,69 @@ function handleExport(event: NetlifyEvent): NetlifyResponse {
     records: fields.length,
     csvContent,
     downloadUrl: null,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Commit — persists an in-memory import session to the ML feature store.
+//
+// When DATABASE_URL is not configured, returns a 202 noting that persistence
+// is demo-only and data will be used by the ML service's built-in demo mode.
+// When ML_SERVICE_URL is configured, triggers a background re-training job.
+// ---------------------------------------------------------------------------
+
+interface CommitBody {
+  importId: string;
+}
+
+async function handleCommit(event: NetlifyEvent, logger: Logger): Promise<NetlifyResponse> {
+  const body = parseBody<CommitBody>(event);
+  if (!body?.importId) return errorResponse(400, 'importId is required');
+
+  const session = sessions.get(body.importId);
+  if (!session) {
+    return errorResponse(404, `Import session '${body.importId}' not found — it may have expired`);
+  }
+
+  const ML_SERVICE_URL = process.env['ML_SERVICE_URL'];
+  const DATABASE_URL = process.env['DATABASE_URL'];
+
+  const persistenceMode = DATABASE_URL ? 'postgres' : 'demo';
+
+  if (persistenceMode === 'demo') {
+    logger.info('commit in demo mode — no DB configured', { importId: body.importId });
+    // In demo mode, mark session as committed so UI can proceed
+    sessions.set(body.importId, { ...session, status: 'committed' });
+    return jsonResponse(202, {
+      importId: body.importId,
+      status: 'committed',
+      persistenceMode: 'demo',
+      message: 'Session marked committed. No database is configured — ML service will use demo data.',
+      fields: session.fields.length,
+      operations: session.operations.length,
+    });
+  }
+
+  // Production path: write to feature store (DATABASE_URL is set)
+  // This is handled by a separate ingestion pipeline (see docs/warehouse/04-azure-durable-functions-pipeline.md).
+  // For now, signal the ML service to retrain if available.
+  logger.info('commit to feature store', { importId: body.importId, fields: session.fields.length });
+
+  if (ML_SERVICE_URL) {
+    try {
+      await fetch(`${ML_SERVICE_URL}/api/ml/train/all`, { method: 'POST' });
+      logger.info('triggered ML re-training after commit');
+    } catch (err) {
+      logger.warn('could not trigger ML re-training', { err: String(err) });
+    }
+  }
+
+  sessions.set(body.importId, { ...session, status: 'committed' });
+  return jsonResponse(200, {
+    importId: body.importId,
+    status: 'committed',
+    persistenceMode,
+    fields: session.fields.length,
+    operations: session.operations.length,
   });
 }

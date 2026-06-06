@@ -18,6 +18,7 @@ var agronomyApi = builder.Configuration["Api:AgronomyApi"] ?? "/agronomy-api";
 var aiSearchApi = builder.Configuration["Api:AiSearchApi"] ?? "/ai-search-api";
 var spatialApi = builder.Configuration["Api:SpatialApi"] ?? "/spatial-api";
 var transferApi = builder.Configuration["Api:TransferApi"] ?? "/transfer-api";
+var mlApi = builder.Configuration["Api:MlApi"] ?? "/ml-api";
 
 builder.Services.AddSingleton<LogService>();
 builder.Services.AddScoped<NotificationService>();
@@ -48,6 +49,7 @@ AddApiClient(ApiClients.Agronomy, agronomyApi);
 AddApiClient(ApiClients.AiSearch, aiSearchApi);
 AddApiClient(ApiClients.Spatial, spatialApi);
 AddApiClient(ApiClients.Transfer, transferApi);
+AddApiClient(ApiClients.Ml, mlApi);
 
 builder.Services.AddHttpClient(ApiClients.AirQuality,
     c => c.BaseAddress = new Uri("https://airquality.googleapis.com/"));
@@ -70,5 +72,6 @@ builder.Services.AddScoped<DemoFieldData>();
 builder.Services.AddScoped<LearningService>();
 builder.Services.AddScoped<AiOrchestrationService>();
 builder.Services.AddScoped<TransferService>();
+builder.Services.AddScoped<MlService>();
 
 await builder.Build().RunAsync();

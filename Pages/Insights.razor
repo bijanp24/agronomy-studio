@@ -1,0 +1,210 @@
+@page "/insights"
+@using System.Globalization
+@inject MlService MlService
+@inject FieldIntelligenceService FieldService
+@inject NavigationManager Navigation
+
+<PageTitle>Yield Insights · Agronomy Studio</PageTitle>
+
+<div class="page-header">
+    <h1>Yield Insights</h1>
+    <p class="page-sub">ML-derived yield predictions from historical field data — confidence intervals and SHAP factor attributions</p>
+</div>
+
+@if (_loading)
+{
+    <div class="indeterminate-bar" role="progressbar" aria-label="Loading predictions"></div>
+}
+
+@if (_error is not null)
+{
+    <div class="studio-card error-card">
+        <span class="bi bi-exclamation-triangle" aria-hidden="true"></span>
+        @_error
+    </div>
+}
+
+@if (!_loading && _error is null)
+{
+    <div class="ml-disclaimer studio-card">
+        <span class="bi bi-info-circle" aria-hidden="true"></span>
+        <span><strong>ML-derived estimates.</strong> All yield values are computed by deterministic models trained on historical data. The AI layer explains results; it does not invent numbers.</span>
+    </div>
+
+    <!-- Field selector -->
+    <div class="studio-card field-selector-card">
+        <label for="field-select" class="selector-label">Select field</label>
+        <div class="selector-row">
+            <select id="field-select" class="studio-select" @onchange="OnFieldChanged">
+                @foreach (var f in _fields)
+                {
+                    <option value="@f.FieldId" selected="@(f.FieldId == _selectedFieldId)">@f.FieldName — @f.Crop</option>
+                }
+            </select>
+            <select class="studio-select" @bind="_cropYear">
+                @for (int y = 2026; y >= 2020; y--)
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+            <button class="btn-primary" @onclick="LoadPrediction" disabled="@_predLoading">
+                @(_predLoading ? "Predicting…" : "Predict")
+            </button>
+        </div>
+    </div>
+
+    @if (_prediction is not null)
+    {
+        <div class="insights-grid">
+            <!-- Yield KPI cards -->
+            <div class="studio-card kpi-card">
+                <div class="kpi-value ml-yield">@YieldTonnes(_prediction.PredictedYieldKgHa) t/ha</div>
+                <div class="kpi-label">Predicted Yield</div>
+                <div class="kpi-sub">@YieldTonnes(_prediction.YieldLowerKgHa)–@YieldTonnes(_prediction.YieldUpperKgHa) t/ha (80% interval)</div>
+            </div>
+            <div class="studio-card kpi-card">
+                <div class="kpi-value">@YieldTonnes(_prediction.BaselineYieldKgHa) t/ha</div>
+                <div class="kpi-label">Historical Baseline</div>
+                <div class="kpi-sub @DeltaClass">@DeltaLabel</div>
+            </div>
+            <div class="studio-card kpi-card">
+                <div class="kpi-value">
+                    <span class="conf-chip conf-@_prediction.Confidence.ToLower()">@_prediction.Confidence</span>
+                </div>
+                <div class="kpi-label">Confidence</div>
+                <div class="kpi-sub">Based on training history</div>
+            </div>
+        </div>
+
+        <!-- Factor attribution -->
+        <h2 class="section-title">Factor Attribution (SHAP)</h2>
+        <div class="studio-card">
+            <p class="factor-note">Factor weights show relative influence on the prediction. Larger bar = higher sensitivity.</p>
+            <div class="factor-bars">
+                @foreach (var f in Factors)
+                {
+                    <div class="factor-row">
+                        <span class="factor-label">@f.Label</span>
+                        <div class="factor-bar-track">
+                            <div class="factor-bar-fill factor-@f.Key" style="width:@(f.Pct)%"></div>
+                        </div>
+                        <span class="factor-value">@(f.Pct.ToString("F0"))%</span>
+                        @if (_prediction.LimitingFactors.Contains(f.Key))
+                        {
+                            <span class="limiting-badge">limiting</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- AI explanation -->
+        <h2 class="section-title">Model Explanation</h2>
+        <div class="studio-card explanation-card">
+            <p class="explanation-text">@_prediction.Explanation</p>
+            <p class="disclaimer-text"><em>@_prediction.Disclaimer</em></p>
+        </div>
+    }
+}
+
+@code {
+    private List<FieldSummary> _fields = new();
+    private string _selectedFieldId = "";
+    private string _selectedCrop = "almond";
+    private int _cropYear = 2026;
+    private bool _loading = true;
+    private bool _predLoading;
+    private string? _error;
+    private MlYieldPrediction? _prediction;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var summary = await FieldService.GetDashboardSummaryAsync();
+            _fields = summary?.Fields ?? new();
+            if (_fields.Count > 0)
+            {
+                _selectedFieldId = _fields[0].FieldId;
+                _selectedCrop = string.IsNullOrEmpty(_fields[0].Crop) ? "almond" : _fields[0].Crop;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load fields: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        if (_fields.Count > 0)
+            await LoadPrediction();
+    }
+
+    private void OnFieldChanged(ChangeEventArgs e)
+    {
+        _selectedFieldId = e.Value?.ToString() ?? "";
+        var f = _fields.FirstOrDefault(x => x.FieldId == _selectedFieldId);
+        _selectedCrop = string.IsNullOrEmpty(f?.Crop) ? "almond" : f!.Crop;
+    }
+
+    private async Task LoadPrediction()
+    {
+        if (string.IsNullOrEmpty(_selectedFieldId)) return;
+        _predLoading = true;
+        _error = null;
+        try
+        {
+            _prediction = await MlService.PredictYieldAsync(_selectedFieldId, _selectedCrop, _cropYear);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Prediction failed: {ex.Message}";
+        }
+        finally
+        {
+            _predLoading = false;
+        }
+    }
+
+    private static string YieldTonnes(double kgHa) =>
+        (kgHa / 1000).ToString("F2", CultureInfo.InvariantCulture);
+
+    private string DeltaClass
+    {
+        get
+        {
+            if (_prediction is null) return "";
+            var delta = _prediction.PredictedYieldKgHa - _prediction.BaselineYieldKgHa;
+            return delta >= 0 ? "delta-positive" : "delta-negative";
+        }
+    }
+
+    private string DeltaLabel
+    {
+        get
+        {
+            if (_prediction is null) return "";
+            var delta = _prediction.PredictedYieldKgHa - _prediction.BaselineYieldKgHa;
+            var pct = Math.Abs(delta / (_prediction.BaselineYieldKgHa + 1e-9)) * 100;
+            return $"{(delta >= 0 ? "+" : "")}{(delta / 1000):F2} t/ha ({pct:F1}% {(delta >= 0 ? "above" : "below")})";
+        }
+    }
+
+    private IEnumerable<FactorRow> Factors =>
+        _prediction is null ? Array.Empty<FactorRow>() : new[]
+        {
+            new FactorRow("water",    "Water / Irrigation",  _prediction.FactorWater),
+            new FactorRow("nutrient", "Nutrients",           _prediction.FactorNutrient),
+            new FactorRow("heat",     "Heat / Soil pH",      _prediction.FactorHeat),
+            new FactorRow("uv",       "Soil Organic Matter", _prediction.FactorUv),
+            new FactorRow("seed",     "Field Management",    _prediction.FactorSeed),
+            new FactorRow("planting", "Crop / Region",       _prediction.FactorPlanting),
+        };
+
+    private record FactorRow(string Key, string Label, double Value)
+    {
+        public double Pct => Math.Round(Value * 100, 1);
+    }
+}
