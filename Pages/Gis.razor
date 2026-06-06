@@ -2,6 +2,7 @@
 @using System.Globalization
 @implements IAsyncDisposable
 @inject FieldIntelligenceService FieldService
+@inject GisOverlayService GisService
 @inject AirQualityService AirQualityService
 @inject SolarService SolarService
 @inject IJSRuntime JS
@@ -11,7 +12,7 @@
 
 <div class="page-header">
     <h1>GIS Block Explorer</h1>
-    <p class="page-sub">San Joaquin Valley — @_features.Count blocks at 2 km resolution</p>
+    <p class="page-sub">San Joaquin Valley — @_features.Count blocks · Season @_season</p>
 </div>
 
 @if (_loading)
@@ -29,6 +30,7 @@
 
 @if (!_loading && !_hasError)
 {
+    @* AQI banner *@
     @if (_airQuality != null)
     {
         <div class="aqi-banner" style="border-left-color: @_airQuality.BannerColor">
@@ -42,6 +44,37 @@
         </div>
     }
 
+    @* Frost alert banner (Phase 2) *@
+    @if (_frostAlertBlocks.Count > 0)
+    {
+        <div class="frost-alert-banner">
+            <span class="bi bi-thermometer-snow" aria-hidden="true"></span>
+            <strong>Frost Risk Alert:</strong> @_frostAlertBlocks.Count block@(_frostAlertBlocks.Count == 1 ? "" : "s") showing high frost risk this season.
+            @string.Join(", ", _frostAlertBlocks.Take(3))
+            @if (_frostAlertBlocks.Count > 3) { <span>…</span> }
+        </div>
+    }
+
+    @* Season timeline slider (Phase 4) *@
+    <div class="studio-card season-card">
+        <label class="season-label">
+            <span class="bi bi-calendar3" aria-hidden="true"></span>
+            Season
+        </label>
+        <div class="season-slider-row">
+            @foreach (var s in Seasons)
+            {
+                <button class="season-chip @(s == _season ? "season-chip--active" : "")"
+                        @onclick='() => OnSeasonChanged(s)'>@s</button>
+            }
+        </div>
+        @if (_seasonNote != null)
+        {
+            <span class="season-note">@_seasonNote</span>
+        }
+    </div>
+
+    @* Filter + overlay controls *@
     <div class="studio-card filter-card">
         <label class="filter-field">
             <span class="field-label">Irrigation Zone</span>
@@ -75,12 +108,14 @@
             </select>
         </label>
 
-        <label class="filter-field toggle-field">
-            <span class="field-label">Visualization</span>
-            <label class="toggle-label">
-                <input type="checkbox" @bind="_showHeatmap" @bind:after="OnHeatmapToggled" />
-                Elevation heatmap
-            </label>
+        <label class="filter-field">
+            <span class="field-label">Overlay</span>
+            <select class="text-input" value="@_activeOverlay" @onchange="OnOverlayChanged">
+                @foreach (var o in OverlayRegistry)
+                {
+                    <option value="@o.Key">@o.Label</option>
+                }
+            </select>
         </label>
 
         <span class="result-count">
@@ -92,7 +127,12 @@
         </span>
     </div>
 
+    @* Map + legend *@
     <div class="studio-card map-card">
+        @if (_overlayLoading)
+        {
+            <div class="indeterminate-bar" role="progressbar" aria-label="Loading overlay"></div>
+        }
         @if (_mapError)
         {
             <div class="map-error">
@@ -104,27 +144,53 @@
         {
             <div id="gis-map" class="map-container"></div>
         }
-        @if (!_showHeatmap)
-        {
-            <div class="map-legend">
-                @foreach (var entry in Legend)
+        <div class="map-legend">
+            @if (ActiveOverlayDef?.LegendStops != null)
+            {
+                <span class="legend-title">@ActiveOverlayDef.Label</span>
+                @foreach (var stop in ActiveOverlayDef.LegendStops)
+                {
+                    <span class="legend-item">
+                        <span class="legend-dot" style="background:@stop.Color"></span>@stop.Label
+                    </span>
+                }
+                @if (_cloudMaskedCount > 0)
+                {
+                    <span class="legend-item">
+                        <span class="legend-dot" style="background:#94a3b8"></span>No imagery
+                    </span>
+                }
+            }
+            else
+            {
+                @foreach (var entry in CropLegend)
                 {
                     <span class="legend-item">
                         <span class="legend-dot" style="background:@entry.Color"></span>@entry.Label
                     </span>
                 }
-            </div>
-        }
+            }
+        </div>
     </div>
 
+    @* Block detail panel *@
     @if (_selectedBlock != null)
     {
+        var ndviResult = _vegetationNdvi?.FirstOrDefault(r => r.BlockId == _selectedBlock.Id);
+        var gddResult = _gddData?.FirstOrDefault(r => r.BlockId == _selectedBlock.Id);
+        var mcResult = _microclimateData?.FirstOrDefault(r => r.BlockId == _selectedBlock.Id);
+        var smResult = _soilMoistureData?.FirstOrDefault(r => r.BlockId == _selectedBlock.Id);
+
         <div class="studio-card block-detail-card">
             <div class="block-detail-header">
                 <div>
                     <span class="block-detail-id">@_selectedBlock.Id</span>
                     <span class="block-detail-crop capitalize">@_selectedBlock.Properties.CropType</span>
                     <span class="zone-chip">@_selectedBlock.Properties.IrrigationZone</span>
+                    @if (_vraModeActive && !_vraSelectedBlocks.Contains(_selectedBlock.Id))
+                    {
+                        <button class="btn-sm btn-secondary" @onclick='() => VraAddBlock(_selectedBlock.Id)'>+ Add to VRA</button>
+                    }
                 </div>
                 <button class="detail-close" @onclick="CloseBlockDetail" aria-label="Close">×</button>
             </div>
@@ -146,6 +212,85 @@
                     </div>
                 </div>
 
+                @* GDD + microclimate panel (Phase 2) *@
+                <div class="detail-section">
+                    <h4 class="detail-section-title">Growing Degree Days</h4>
+                    @if (gddResult != null)
+                    {
+                        <div class="detail-row">
+                            <span class="detail-label">Accumulated GDD</span>
+                            <span>@gddResult.GddAccumulated.ToString("N0") °C-days</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Season target</span>
+                            <span>@gddResult.CropThreshold.ToString("N0") °C-days</span>
+                        </div>
+                        <div class="gdd-bar-wrap">
+                            <div class="gdd-bar" style="width:@gddResult.PercentComplete%"></div>
+                        </div>
+                        <span class="gdd-pct">@gddResult.PercentComplete.ToString("F1")% complete</span>
+                    }
+                    @if (mcResult != null)
+                    {
+                        <div class="detail-row" style="margin-top:.5rem">
+                            <span class="detail-label">Ref ET</span>
+                            <span>@mcResult.ReferenceEtMmDay.ToString("F2") mm/day</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Frost risk</span>
+                            <span class="frost-chip frost-chip--@mcResult.FrostRiskLevel">@mcResult.FrostRiskLevel</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Wind</span>
+                            <span>@mcResult.WindSpeedMph.ToString("F1") mph · @mcResult.WindDirectionDeg°</span>
+                        </div>
+                    }
+                    @if (ndviResult != null)
+                    {
+                        <div class="detail-row" style="margin-top:.5rem">
+                            <span class="detail-label">NDVI</span>
+                            <span>@(ndviResult.CloudFree ? ndviResult.Value.ToString("F3") : "—cloud masked")</span>
+                        </div>
+                    }
+                </div>
+
+                @* Soil moisture sparkline (Phase 3) *@
+                <div class="detail-section">
+                    <h4 class="detail-section-title">Soil Moisture</h4>
+                    @if (smResult != null)
+                    {
+                        @if (smResult.Stale)
+                        {
+                            <div class="stale-badge">
+                                <span class="bi bi-clock-history" aria-hidden="true"></span>
+                                Stale — @smResult.LastReadingAgeHours h ago
+                            </div>
+                        }
+                        @foreach (var r in smResult.Readings)
+                        {
+                            <div class="probe-row">
+                                <span class="probe-depth">@r.DepthIn in</span>
+                                <div class="probe-bar-wrap">
+                                    <div class="probe-bar" style="width:@Math.Min(100, r.VwcPct)%"></div>
+                                </div>
+                                <span class="probe-val">@r.VwcPct.ToString("F1")%</span>
+                            </div>
+                        }
+                        <div class="detail-row" style="margin-top:.4rem">
+                            <span class="detail-label">Deficit</span>
+                            <span>@smResult.DeficitPct.ToString("F1")%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Irrigation need</span>
+                            <span>@smResult.IrrigationNeedIn.ToString("F2") in</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="detail-na">Select "Soil Moisture" overlay to load probe data</span>
+                    }
+                </div>
+
                 <div class="detail-section">
                     <h4 class="detail-section-title">Solar Potential</h4>
                     @if (_solarLoading)
@@ -159,23 +304,98 @@
                             <span>@_solarData.SolarPotential.MaxSunshineHoursPerYear.ToString("N0") hrs</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Carbon offset factor</span>
+                            <span class="detail-label">Carbon offset</span>
                             <span>@_solarData.SolarPotential.CarbonOffsetFactorKgPerMwh.ToString("N0") kg/MWh</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Panel capacity</span>
-                            <span>@_solarData.SolarPotential.PanelCapacityWatts W</span>
                         </div>
                     }
                     else
                     {
-                        <span class="detail-na">No solar data available for this block</span>
+                        <span class="detail-na">No solar data for this block</span>
                     }
                 </div>
             </div>
         </div>
     }
 
+    @* VRA Prescription Builder (Phase 5) *@
+    <div class="studio-card vra-card">
+        <div class="vra-header">
+            <h3 class="vra-title">
+                <span class="bi bi-map" aria-hidden="true"></span>
+                VRA Prescription Builder
+                <span class="badge-beta">Beta</span>
+            </h3>
+            <button class="btn-sm @(_vraModeActive ? "btn-primary" : "btn-outline")"
+                    @onclick="ToggleVraMode">
+                @(_vraModeActive ? "Exit zone-select mode" : "Enter zone-select mode")
+            </button>
+        </div>
+
+        @if (_vraModeActive)
+        {
+            <p class="vra-hint">Click blocks on the map (or use the block detail panel) to add zones.</p>
+
+            @if (_vraSelectedBlocks.Count > 0)
+            {
+                <div class="vra-zones">
+                    @foreach (var bid in _vraSelectedBlocks)
+                    {
+                        var block = _features.FirstOrDefault(f => f.Id == bid);
+                        <div class="vra-zone-row">
+                            <span class="mono">@bid</span>
+                            <span class="capitalize">@(block?.Properties.CropType ?? "")</span>
+                            <button class="btn-icon" @onclick='() => VraRemoveBlock(bid)' aria-label="Remove zone">×</button>
+                        </div>
+                    }
+                </div>
+
+                <div class="vra-rates">
+                    <h4 class="vra-rates-title">Target Rates (applied to all selected zones)</h4>
+                    <div class="vra-rate-grid">
+                        <label>
+                            N (lb/ac)
+                            <input class="text-input text-input--sm" type="number" min="0" step="5"
+                                   @bind="_vraNitrogenLbAc" />
+                        </label>
+                        <label>
+                            P (lb/ac)
+                            <input class="text-input text-input--sm" type="number" min="0" step="5"
+                                   @bind="_vraPhosphorusLbAc" />
+                        </label>
+                        <label>
+                            K (lb/ac)
+                            <input class="text-input text-input--sm" type="number" min="0" step="5"
+                                   @bind="_vraPotassiumLbAc" />
+                        </label>
+                        <label>
+                            Seed (lb/ac)
+                            <input class="text-input text-input--sm" type="number" min="0" step="1"
+                                   @bind="_vraSeedLbAc" />
+                        </label>
+                    </div>
+                    <div class="vra-actions">
+                        <button class="btn-sm btn-primary" @onclick="ExportVra" disabled="@_vraExporting">
+                            @(_vraExporting ? "Generating…" : "Export GeoJSON + CSV")
+                        </button>
+                        <button class="btn-sm btn-outline" @onclick="ClearVraSelection">Clear</button>
+                    </div>
+                </div>
+            }
+
+            @if (_vraExportResult != null)
+            {
+                <div class="vra-export-result">
+                    <span class="bi bi-check-circle" aria-hidden="true"></span>
+                    Prescription ready — @_vraExportResult.BlockCount zone@(_vraExportResult.BlockCount == 1 ? "" : "s") ·
+                    <a href="#" @onclick="DownloadVraGeoJson" @onclick:preventDefault>Download GeoJSON</a> ·
+                    <a href="#" @onclick="DownloadVraCsv" @onclick:preventDefault>Download CSV</a>
+                </div>
+                <p class="vra-iso-note">@_vraExportResult.IsoXmlNote</p>
+            }
+        }
+    </div>
+
+    @* Blocks table *@
     <div class="studio-card table-card">
         <div class="table-scroll">
             <table class="studio-table blocks-table">
@@ -186,18 +406,23 @@
                         <th>Soil</th>
                         <th>Zone</th>
                         <th>Elevation</th>
+                        <th>@_activeOverlayColumnHeader</th>
                         <th>Center</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var f in Filtered)
                     {
-                        <tr>
+                        var overlayCell = GetOverlayCellValue(f.Id);
+                        <tr class="@(_vraModeActive && _vraSelectedBlocks.Contains(f.Id) ? "row-selected" : "")"
+                            @onclick='() => OnTableRowClicked(f)'
+                            style="cursor:pointer">
                             <td class="mono">@f.Id</td>
                             <td class="capitalize">@f.Properties.CropType</td>
                             <td>@f.Properties.SoilType</td>
                             <td><span class="zone-chip">@f.Properties.IrrigationZone</span></td>
                             <td>@f.Properties.ElevationM m</td>
+                            <td>@overlayCell</td>
                             <td class="mono coords">@Coord(f.Properties.CenterLat), @Coord(f.Properties.CenterLon)</td>
                         </tr>
                     }
@@ -208,25 +433,66 @@
 }
 
 @code {
-    private static readonly Dictionary<string, string> CropPalette = new(StringComparer.OrdinalIgnoreCase)
+    // -------------------------------------------------------------------------
+    // Overlay registry
+    // -------------------------------------------------------------------------
+
+    private sealed record LegendStop(string Color, string Label);
+    private sealed record OverlayDef(
+        string Key,
+        string Label,
+        string RampName,
+        LegendStop[]? LegendStops = null);
+
+    private static readonly OverlayDef[] OverlayRegistry = new[]
     {
-        ["almond"] = "#d97706",
-        ["grape"] = "#7c3aed",
-        ["tomato"] = "#dc2626",
-        ["cotton"] = "#6b7280",
-        ["wheat"] = "#ca8a04",
-        ["corn"] = "#16a34a",
-        ["pistachio"] = "#65a30d",
-        ["walnut"] = "#92400e",
-        ["citrus"] = "#ea580c",
+        new OverlayDef("crop",      "Crop (default)",           "crop",       null),
+        new OverlayDef("elevation", "Elevation heatmap",        "elevation",  null),
+        new OverlayDef("ndvi",      "NDVI — Vegetation vigour", "vegetation",
+            new[] { new LegendStop("#b91c1c","Stress"), new LegendStop("#eab308","Fair"), new LegendStop("#15803d","Vigour") }),
+        new OverlayDef("evi",       "EVI — Enhanced vegetation","vegetation",
+            new[] { new LegendStop("#b91c1c","Stress"), new LegendStop("#eab308","Fair"), new LegendStop("#15803d","Vigour") }),
+        new OverlayDef("gdd",       "GDD — Growing degree days","gdd",
+            new[] { new LegendStop("#1d4ed8","Low"), new LegendStop("#f59e0b","Mid"), new LegendStop("#ea580c","High") }),
+        new OverlayDef("et",        "ET — Reference evapotranspiration","et",
+            new[] { new LegendStop("#bfdbfe","Low"), new LegendStop("#0891b2","Mid"), new LegendStop("#7e22ce","High") }),
+        new OverlayDef("frost",     "Frost risk",               "frost",
+            new[] { new LegendStop("#16a34a","None"), new LegendStop("#fbbf24","Low"), new LegendStop("#e0e7ef","High") }),
+        new OverlayDef("moisture",  "Soil moisture deficit",    "moisture",
+            new[] { new LegendStop("#1d4ed8","Wet"), new LegendStop("#fbbf24","Mid"), new LegendStop("#dc2626","Dry") }),
     };
 
-    private static readonly (string Label, string Color)[] Legend =
+    private static readonly string[] Seasons = { "2021", "2022", "2023", "2024", "2025" };
+
+    private static readonly Dictionary<string, string> SeasonNotes = new()
+    {
+        ["2021"] = "Drought year — reduced allocation across SJV.",
+        ["2022"] = "Moderate year — above-average spring rain.",
+        ["2023"] = "Wet year — atmospheric river events; delayed planting.",
+        ["2024"] = "Near-normal year — good early-season moisture.",
+        ["2025"] = "Current season.",
+    };
+
+    // -------------------------------------------------------------------------
+    // Crop colors (default view)
+    // -------------------------------------------------------------------------
+
+    private static readonly Dictionary<string, string> CropPalette = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["almond"] = "#d97706", ["grape"] = "#7c3aed", ["tomato"] = "#dc2626",
+        ["cotton"] = "#6b7280", ["wheat"] = "#ca8a04", ["corn"] = "#16a34a",
+        ["pistachio"] = "#65a30d", ["walnut"] = "#92400e", ["citrus"] = "#ea580c",
+    };
+
+    private static readonly (string Label, string Color)[] CropLegend =
     {
         ("Almond", "#d97706"), ("Grape", "#7c3aed"), ("Tomato", "#dc2626"),
-        ("Cotton", "#6b7280"), ("Wheat", "#ca8a04"), ("Corn", "#16a34a"),
-        ("Other", "#3b82f6"),
+        ("Cotton", "#6b7280"), ("Wheat", "#ca8a04"), ("Corn", "#16a34a"), ("Other", "#3b82f6"),
     };
+
+    // -------------------------------------------------------------------------
+    // State
+    // -------------------------------------------------------------------------
 
     private List<GeoJsonFeature> _features = new();
     private List<string> _zones = new();
@@ -234,7 +500,12 @@
     private string _selectedZone = "";
     private string _selectedCrop = "";
     private string _mapType = "hybrid";
-    private bool _showHeatmap;
+    private string _season = "2025";
+    private string? _seasonNote;
+    private string _activeOverlay = "crop";
+    private bool _overlayLoading;
+    private int _cloudMaskedCount;
+
     private bool _loading = true;
     private bool _hasError;
     private bool _mapReady;
@@ -247,7 +518,32 @@
     private SolarData? _solarData;
     private bool _solarLoading;
 
+    // Overlay data caches (cleared on season or filter change)
+    private List<VegetationResult>? _vegetationNdvi;
+    private List<VegetationResult>? _vegetationEvi;
+    private List<GddResult>? _gddData;
+    private List<MicroclimateSummary>? _microclimateData;
+    private List<SoilMoistureResult>? _soilMoistureData;
+
+    // Frost alert
+    private List<string> _frostAlertBlocks = new();
+
+    // VRA state (Phase 5)
+    private bool _vraModeActive;
+    private HashSet<string> _vraSelectedBlocks = new();
+    private double? _vraNitrogenLbAc;
+    private double? _vraPhosphorusLbAc;
+    private double? _vraPotassiumLbAc;
+    private double? _vraSeedLbAc;
+    private bool _vraExporting;
+    private VraExportResult? _vraExportResult;
+
     private DotNetObjectReference<Gis>? _dotNetRef;
+
+    private OverlayDef? ActiveOverlayDef =>
+        OverlayRegistry.FirstOrDefault(o => o.Key == _activeOverlay);
+
+    private string _activeOverlayColumnHeader => ActiveOverlayDef?.Label ?? "Overlay";
 
     private List<GeoJsonFeature> FilteredAll => _features
         .Where(f => (string.IsNullOrEmpty(_selectedZone) || f.Properties.IrrigationZone == _selectedZone)
@@ -255,18 +551,21 @@
         .ToList();
 
     private List<GeoJsonFeature> Filtered => FilteredAll.Take(150).ToList();
-
     private int FilteredCount => FilteredAll.Count;
+
+    // -------------------------------------------------------------------------
+    // Lifecycle
+    // -------------------------------------------------------------------------
 
     protected override async Task OnInitializedAsync()
     {
         _dotNetRef = DotNetObjectReference.Create(this);
+        SeasonNotes.TryGetValue(_season, out _seasonNote);
 
         try
         {
             var blocksTask = FieldService.GetGisBlocksAsync();
             var aqiTask = AirQualityService.GetCurrentConditionsAsync(36.7, -119.8);
-
             await Task.WhenAll(blocksTask, aqiTask);
 
             var collection = blocksTask.Result;
@@ -274,6 +573,9 @@
             _zones = _features.Select(f => f.Properties.IrrigationZone).Distinct().OrderBy(z => z).ToList();
             _crops = _features.Select(f => f.Properties.CropType).Distinct().OrderBy(c => c).ToList();
             _airQuality = aqiTask.Result;
+
+            // Pre-fetch GDD + microclimate for frost alert and block detail panel
+            await FetchGddAndMicroclimate();
         }
         catch
         {
@@ -307,7 +609,7 @@
             }
 
             _mapReady = true;
-            await RenderMap();
+            await RenderActiveOverlay();
         }
         catch (Exception ex)
         {
@@ -321,16 +623,133 @@
         }
     }
 
-    private async Task RenderMap()
+    // -------------------------------------------------------------------------
+    // Overlay data fetching
+    // -------------------------------------------------------------------------
+
+    private BlockOverlayInput ToBlockInput(GeoJsonFeature f) => new()
+    {
+        BlockId = f.Id,
+        CropType = f.Properties.CropType,
+        SoilType = f.Properties.SoilType,
+        ElevationM = f.Properties.ElevationM,
+        Season = _season,
+        IrrigationZone = f.Properties.IrrigationZone,
+    };
+
+    private async Task FetchGddAndMicroclimate()
+    {
+        var blocks = FilteredAll.Select(ToBlockInput).ToList();
+        if (blocks.Count == 0) return;
+        try
+        {
+            var gddTask = GisService.GetGddAsync(blocks);
+            var mcTask = GisService.GetMicroclimateAsync(blocks);
+            await Task.WhenAll(gddTask, mcTask);
+            _gddData = gddTask.Result?.Results ?? new();
+            _microclimateData = mcTask.Result?.Results ?? new();
+            _frostAlertBlocks = _microclimateData
+                .Where(m => m.FrostRiskLevel == "high")
+                .Select(m => m.BlockId)
+                .ToList();
+        }
+        catch { /* overlay fetch failure is non-fatal */ }
+    }
+
+    private async Task FetchOverlayData()
+    {
+        var blocks = FilteredAll.Select(ToBlockInput).ToList();
+        if (blocks.Count == 0) return;
+        _overlayLoading = true;
+        _cloudMaskedCount = 0;
+        StateHasChanged();
+
+        try
+        {
+            switch (_activeOverlay)
+            {
+                case "ndvi":
+                    if (_vegetationNdvi == null)
+                    {
+                        var r = await GisService.GetVegetationAsync(blocks, "ndvi");
+                        _vegetationNdvi = r?.Results ?? new();
+                    }
+                    _cloudMaskedCount = (_vegetationNdvi ?? new()).Count(v => !v.CloudFree);
+                    break;
+
+                case "evi":
+                    if (_vegetationEvi == null)
+                    {
+                        var r = await GisService.GetVegetationAsync(blocks, "evi");
+                        _vegetationEvi = r?.Results ?? new();
+                    }
+                    _cloudMaskedCount = (_vegetationEvi ?? new()).Count(v => !v.CloudFree);
+                    break;
+
+                case "gdd":
+                    if (_gddData == null) await FetchGddAndMicroclimate();
+                    break;
+
+                case "et":
+                case "frost":
+                    if (_microclimateData == null) await FetchGddAndMicroclimate();
+                    break;
+
+                case "moisture":
+                    if (_soilMoistureData == null)
+                    {
+                        var r = await GisService.GetSoilMoistureAsync(blocks);
+                        _soilMoistureData = r?.Results ?? new();
+                    }
+                    break;
+            }
+        }
+        catch { /* non-fatal */ }
+        finally
+        {
+            _overlayLoading = false;
+        }
+    }
+
+    private void InvalidateOverlayCaches()
+    {
+        _vegetationNdvi = null;
+        _vegetationEvi = null;
+        _gddData = null;
+        _microclimateData = null;
+        _soilMoistureData = null;
+        _frostAlertBlocks.Clear();
+    }
+
+    // -------------------------------------------------------------------------
+    // Map rendering
+    // -------------------------------------------------------------------------
+
+    private async Task RenderActiveOverlay()
     {
         if (!_mapReady) return;
 
+        if (_activeOverlay == "crop")
+        {
+            await RenderCrop();
+            return;
+        }
+        if (_activeOverlay == "elevation")
+        {
+            await RenderElevationHeatmap();
+            return;
+        }
+
+        await FetchOverlayData();
+        await RenderChoropleth();
+    }
+
+    private async Task RenderCrop()
+    {
         var shapes = FilteredAll.Select(f => new
         {
             color = CropColor(f.Properties.CropType),
-            coords = f.Geometry.Coordinates.Count > 0
-                ? f.Geometry.Coordinates[0].Select(pair => new[] { pair[1], pair[0] }).ToArray()
-                : Array.Empty<double[]>(),
+            coords = BuildCoords(f),
             popupHtml = PopupHtml(f),
             blockId = f.Id,
             lat = f.Properties.CenterLat,
@@ -340,46 +759,8 @@
         await JS.InvokeVoidAsync("agronomyMap.render", (object)shapes);
     }
 
-    private async Task OnZoneChanged(ChangeEventArgs e)
+    private async Task RenderElevationHeatmap()
     {
-        _selectedZone = e.Value?.ToString() ?? "";
-        _selectedBlock = null;
-        _solarData = null;
-        if (_showHeatmap)
-            await RenderHeatmap();
-        else
-            await RenderMap();
-    }
-
-    private async Task OnCropChanged(ChangeEventArgs e)
-    {
-        _selectedCrop = e.Value?.ToString() ?? "";
-        _selectedBlock = null;
-        _solarData = null;
-        if (_showHeatmap)
-            await RenderHeatmap();
-        else
-            await RenderMap();
-    }
-
-    private async Task OnMapTypeChanged(ChangeEventArgs e)
-    {
-        _mapType = e.Value?.ToString() ?? "hybrid";
-        await JS.InvokeVoidAsync("agronomyMap.setMapType", _mapType);
-    }
-
-    private async Task OnHeatmapToggled()
-    {
-        if (_showHeatmap)
-            await RenderHeatmap();
-        else
-            await RenderMap();
-    }
-
-    private async Task RenderHeatmap()
-    {
-        if (!_mapReady) return;
-
         var points = FilteredAll.Select(f => new
         {
             lat = f.Properties.CenterLat,
@@ -390,12 +771,152 @@
         await JS.InvokeVoidAsync("agronomyMap.renderHeatmap", (object)points);
     }
 
+    private async Task RenderChoropleth()
+    {
+        if (!_mapReady) return;
+
+        var shapes = FilteredAll.Select(f =>
+        {
+            var (value, cloudMasked) = GetOverlayValue(f.Id);
+            return new
+            {
+                coords = BuildCoords(f),
+                blockId = f.Id,
+                lat = f.Properties.CenterLat,
+                lng = f.Properties.CenterLon,
+                popupHtml = PopupHtml(f),
+                value,
+                cloudMasked,
+            };
+        }).ToArray();
+
+        var def = ActiveOverlayDef;
+        await JS.InvokeVoidAsync("agronomyMap.renderChoropleth", (object)shapes, def?.RampName ?? "vegetation");
+
+        // Overlay soil-moisture probe markers on top when moisture is active
+        if (_activeOverlay == "moisture" && _soilMoistureData != null)
+        {
+            var blockCenters = FilteredAll.ToDictionary(f => f.Id, f => f);
+            var probePoints = _soilMoistureData.Select(p =>
+            {
+                blockCenters.TryGetValue(p.BlockId, out var feat);
+                return new
+                {
+                    lat = feat?.Properties.CenterLat ?? 0,
+                    lng = feat?.Properties.CenterLon ?? 0,
+                    blockId = p.BlockId,
+                    label = $"VWC 12in: {p.Readings.FirstOrDefault()?.VwcPct:F1}%",
+                    color = p.Stale ? "#94a3b8" : (p.DeficitPct > 40 ? "#dc2626" : "#06b6d4"),
+                    popupHtml = $"<strong>{p.BlockId}</strong><br>Deficit: {p.DeficitPct:F1}%<br>Need: {p.IrrigationNeedIn:F2} in<br>{(p.Stale ? "<em>Stale reading</em>" : "")}",
+                };
+            }).Where(pt => pt.lat != 0).ToArray();
+            await JS.InvokeVoidAsync("agronomyMap.renderMarkers", (object)probePoints);
+        }
+    }
+
+    private (double value, bool cloudMasked) GetOverlayValue(string blockId)
+    {
+        return _activeOverlay switch
+        {
+            "ndvi" => GetVegValue(blockId, _vegetationNdvi),
+            "evi" => GetVegValue(blockId, _vegetationEvi),
+            "gdd" => (NormalizeGdd(blockId), false),
+            "et" => (NormalizeEt(blockId), false),
+            "frost" => GetFrostValue(blockId),
+            "moisture" => (NormalizeMoisture(blockId), false),
+            _ => (0, false),
+        };
+    }
+
+    private static (double value, bool cloudMasked) GetVegValue(string blockId, List<VegetationResult>? data)
+    {
+        var r = data?.FirstOrDefault(v => v.BlockId == blockId);
+        return r == null ? (0, false) : (r.Value, !r.CloudFree);
+    }
+
+    private double NormalizeGdd(string blockId)
+    {
+        var r = _gddData?.FirstOrDefault(g => g.BlockId == blockId);
+        return r == null ? 0 : Math.Min(1, r.GddAccumulated / Math.Max(1, r.CropThreshold));
+    }
+
+    private double NormalizeEt(string blockId)
+    {
+        var r = _microclimateData?.FirstOrDefault(m => m.BlockId == blockId);
+        if (r == null) return 0;
+        const double maxEt = 8.0;  // mm/day upper bound for colour range
+        return Math.Min(1, r.ReferenceEtMmDay / maxEt);
+    }
+
+    private (double value, bool cloudMasked) GetFrostValue(string blockId)
+    {
+        var r = _microclimateData?.FirstOrDefault(m => m.BlockId == blockId);
+        return r == null ? (0, false) : (r.FrostRiskScore, false);
+    }
+
+    private double NormalizeMoisture(string blockId)
+    {
+        var r = _soilMoistureData?.FirstOrDefault(s => s.BlockId == blockId);
+        return r == null ? 0 : Math.Min(1, r.DeficitPct / 100.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // Event handlers
+    // -------------------------------------------------------------------------
+
+    private async Task OnSeasonChanged(string season)
+    {
+        _season = season;
+        SeasonNotes.TryGetValue(season, out _seasonNote);
+        InvalidateOverlayCaches();
+        _selectedBlock = null;
+        _solarData = null;
+        await FetchGddAndMicroclimate();
+        await RenderActiveOverlay();
+    }
+
+    private async Task OnZoneChanged(ChangeEventArgs e)
+    {
+        _selectedZone = e.Value?.ToString() ?? "";
+        _selectedBlock = null;
+        _solarData = null;
+        InvalidateOverlayCaches();
+        await FetchGddAndMicroclimate();
+        await RenderActiveOverlay();
+    }
+
+    private async Task OnCropChanged(ChangeEventArgs e)
+    {
+        _selectedCrop = e.Value?.ToString() ?? "";
+        _selectedBlock = null;
+        _solarData = null;
+        InvalidateOverlayCaches();
+        await FetchGddAndMicroclimate();
+        await RenderActiveOverlay();
+    }
+
+    private async Task OnMapTypeChanged(ChangeEventArgs e)
+    {
+        _mapType = e.Value?.ToString() ?? "hybrid";
+        await JS.InvokeVoidAsync("agronomyMap.setMapType", _mapType);
+    }
+
+    private async Task OnOverlayChanged(ChangeEventArgs e)
+    {
+        _activeOverlay = e.Value?.ToString() ?? "crop";
+        await RenderActiveOverlay();
+    }
+
     [JSInvokable]
     public async Task OnBlockClicked(string blockId, double lat, double lng)
     {
         _selectedBlock = _features.FirstOrDefault(f => f.Id == blockId);
         _solarData = null;
         _solarLoading = true;
+        if (_vraModeActive && _selectedBlock != null)
+        {
+            _vraSelectedBlocks.Add(blockId);
+        }
         await InvokeAsync(StateHasChanged);
 
         _solarData = await SolarService.GetSolarDataAsync(lat, lng);
@@ -403,11 +924,150 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private async Task OnTableRowClicked(GeoJsonFeature f)
+    {
+        await OnBlockClicked(f.Id, f.Properties.CenterLat, f.Properties.CenterLon);
+    }
+
     private void CloseBlockDetail()
     {
         _selectedBlock = null;
         _solarData = null;
     }
+
+    // -------------------------------------------------------------------------
+    // VRA handlers (Phase 5)
+    // -------------------------------------------------------------------------
+
+    private void ToggleVraMode()
+    {
+        _vraModeActive = !_vraModeActive;
+        if (!_vraModeActive) ClearVraSelection();
+    }
+
+    private void VraAddBlock(string blockId) => _vraSelectedBlocks.Add(blockId);
+    private void VraRemoveBlock(string blockId) => _vraSelectedBlocks.Remove(blockId);
+
+    private void ClearVraSelection()
+    {
+        _vraSelectedBlocks.Clear();
+        _vraExportResult = null;
+        _vraNitrogenLbAc = null;
+        _vraPhosphorusLbAc = null;
+        _vraPotassiumLbAc = null;
+        _vraSeedLbAc = null;
+    }
+
+    private async Task ExportVra()
+    {
+        if (_vraSelectedBlocks.Count == 0) return;
+        _vraExporting = true;
+        _vraExportResult = null;
+        StateHasChanged();
+
+        try
+        {
+            var blockLookup = _features.ToDictionary(f => f.Id);
+            var zones = _vraSelectedBlocks
+                .Where(bid => blockLookup.ContainsKey(bid))
+                .Select(bid =>
+                {
+                    var f = blockLookup[bid];
+                    var ring = f.Geometry.Coordinates.Count > 0
+                        ? f.Geometry.Coordinates[0].Select(p => new List<double> { p[0], p[1] }).ToList()
+                        : new List<List<double>>();
+                    return new Models.VraBlockZone
+                    {
+                        BlockId = bid,
+                        CropType = f.Properties.CropType,
+                        Coordinates = ring,
+                        Rates = new Models.NutrientRates
+                        {
+                            NitrogenLbAc = _vraNitrogenLbAc,
+                            PhosphorusLbAc = _vraPhosphorusLbAc,
+                            PotassiumLbAc = _vraPotassiumLbAc,
+                            SeedLbAc = _vraSeedLbAc,
+                        },
+                    };
+                }).ToList();
+
+            _vraExportResult = await GisService.ExportVraAsync(new Models.VraExportRequest { Zones = zones });
+        }
+        catch { /* non-fatal */ }
+        finally
+        {
+            _vraExporting = false;
+        }
+    }
+
+    private async Task DownloadVraGeoJson()
+    {
+        if (_vraExportResult?.Geojson == null) return;
+        var json = System.Text.Json.JsonSerializer.Serialize(_vraExportResult.Geojson,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        await JS.InvokeVoidAsync("agronomyDownload", $"vra-{_vraExportResult.ExportId}.geojson", json, "application/geo+json");
+    }
+
+    private async Task DownloadVraCsv()
+    {
+        if (_vraExportResult?.Csv == null) return;
+        await JS.InvokeVoidAsync("agronomyDownload", $"vra-{_vraExportResult.ExportId}.csv", _vraExportResult.Csv, "text/csv");
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private string GetOverlayCellValue(string blockId)
+    {
+        return _activeOverlay switch
+        {
+            "crop" => "",
+            "elevation" => "",
+            "ndvi" => FormatVeg(blockId, _vegetationNdvi),
+            "evi" => FormatVeg(blockId, _vegetationEvi),
+            "gdd" => FormatGdd(blockId),
+            "et" => FormatEt(blockId),
+            "frost" => FormatFrost(blockId),
+            "moisture" => FormatMoisture(blockId),
+            _ => "",
+        };
+    }
+
+    private static string FormatVeg(string blockId, List<VegetationResult>? data)
+    {
+        var r = data?.FirstOrDefault(v => v.BlockId == blockId);
+        return r == null ? "—" : r.CloudFree ? r.Value.ToString("F3") : "☁ masked";
+    }
+
+    private string FormatGdd(string blockId)
+    {
+        var r = _gddData?.FirstOrDefault(g => g.BlockId == blockId);
+        return r == null ? "—" : $"{r.GddAccumulated:N0} °C-d";
+    }
+
+    private string FormatEt(string blockId)
+    {
+        var r = _microclimateData?.FirstOrDefault(m => m.BlockId == blockId);
+        return r == null ? "—" : $"{r.ReferenceEtMmDay:F2} mm/d";
+    }
+
+    private string FormatFrost(string blockId)
+    {
+        var r = _microclimateData?.FirstOrDefault(m => m.BlockId == blockId);
+        return r == null ? "—" : r.FrostRiskLevel;
+    }
+
+    private string FormatMoisture(string blockId)
+    {
+        var r = _soilMoistureData?.FirstOrDefault(s => s.BlockId == blockId);
+        return r == null ? "—" : $"{r.DeficitPct:F1}% deficit";
+    }
+
+    private static double[][] BuildCoords(GeoJsonFeature f) =>
+        f.Geometry.Coordinates.Count > 0
+            ? f.Geometry.Coordinates[0].Select(pair => new[] { pair[1], pair[0] }).ToArray()
+            : Array.Empty<double[]>();
 
     private static string CropColor(string crop) =>
         CropPalette.TryGetValue(crop, out var color) ? color : "#3b82f6";
@@ -421,14 +1081,7 @@
     public async ValueTask DisposeAsync()
     {
         _dotNetRef?.Dispose();
-        try
-        {
-            await JS.InvokeVoidAsync("agronomyMap.dispose");
-        }
-        catch
-        {
-            // The JS runtime may already be torn down during navigation.
-        }
+        try { await JS.InvokeVoidAsync("agronomyMap.dispose"); } catch { }
     }
 
     private sealed class MapInitResult
