@@ -1,0 +1,46 @@
+.hero-card {
+  grid-column: span 8;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 15rem;
+  background:
+    linear-gradient(135deg, rgb(18 53 42 / 0.92), rgb(35 98 75 / 0.86)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='160' viewBox='0 0 220 160'%3E%3Cg fill='none' stroke='%23f5f0dd' stroke-opacity='.2'%3E%3Cpath d='M-20 120C45 64 114 58 240 92'/%3E%3Cpath d='M-20 142C62 78 120 79 240 115'/%3E%3Cpath d='M30 0c8 54 5 104-9 150'/%3E%3Cpath d='M91 0c8 54 5 104-9 150'/%3E%3Cpath d='M152 0c8 54 5 104-9 150'/%3E%3C/g%3E%3C/svg%3E");
+  color: var(--cream);
+}
+
+.hero-card h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  line-height: 1;
+}
+
+.hero-card p {
+  max-width: 48ch;
+  margin: 0;
+  color: rgb(245 240 221 / 0.82);
+}
+
+.hero-card .secondary-button {
+  border-color: rgb(245 240 221 / 0.35);
+  background: rgb(245 240 221 / 0.12);
+  color: var(--cream);
+  text-decoration: none;
+}
+
+.metric {
+  grid-column: span 2;
+}
+
+@media (max-width: 820px) {
+  .hero-card,
+  .metric {
+    grid-column: 1;
+  }
+
+  .hero-card {
+    flex-direction: column;
+  }
+}

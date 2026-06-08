@@ -1,0 +1,27 @@
+<section class="page">
+  <header class="page-header">
+    <span class="status">Local services</span>
+    <h1>Diagnostics</h1>
+    <p>Verify the Angular dev proxy and Express mock contracts before mapping to Netlify functions.</p>
+  </header>
+
+  <button class="secondary-button refresh" type="button" (click)="check()" [disabled]="loading()">Refresh status</button>
+
+  @if (loading()) {
+    <div class="message loading" role="status">Checking services...</div>
+  }
+
+  @if (error()) {
+    <div class="message error" role="alert">{{ error() }}</div>
+  }
+
+  <div class="grid">
+    @for (service of services(); track service.service) {
+      <article class="card service-card">
+        <span class="status" [class.danger]="service.status !== 'ok'">{{ service.status }}</span>
+        <h2>{{ service.service }}</h2>
+        <p>Checked {{ service.checkedAt | date: 'medium' }}</p>
+      </article>
+    }
+  </div>
+</section>

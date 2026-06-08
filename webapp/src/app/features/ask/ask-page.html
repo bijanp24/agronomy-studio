@@ -1,0 +1,42 @@
+<section class="page">
+  <header class="page-header">
+    <span class="status">Ask workflow</span>
+    <h1>Ask agronomy</h1>
+    <p>Prototype natural-language routing against deterministic mock responses before connecting live providers.</p>
+  </header>
+
+  <form class="card ask-form" (ngSubmit)="submit()">
+    <div class="field">
+      <label for="query">Question</label>
+      <textarea id="query" name="query" rows="4" required [(ngModel)]="query"></textarea>
+    </div>
+    <button class="primary-button" type="submit" [disabled]="loading()">Ask</button>
+  </form>
+
+  @if (loading()) {
+    <div class="message loading" role="status">Routing question...</div>
+  }
+
+  @if (error()) {
+    <div class="message error" role="alert">{{ error() }}</div>
+  }
+
+  @if (result(); as answer) {
+    <article class="card answer">
+      <div class="answer-meta">
+        <span class="status">{{ answer.intent.replaceAll('_', ' ') }}</span>
+        <span>Confidence {{ answer.confidence | number: '1.0-2' }}</span>
+      </div>
+      <h2>{{ answer.summary }}</h2>
+      <p><strong>Query:</strong> {{ answer.query }}</p>
+      <div>
+        <h3>Sources</h3>
+        <ul>
+          @for (source of answer.sources; track source) {
+            <li>{{ source }}</li>
+          }
+        </ul>
+      </div>
+    </article>
+  }
+</section>

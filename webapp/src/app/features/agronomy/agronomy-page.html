@@ -1,0 +1,70 @@
+<section class="page">
+  <header class="page-header">
+    <span class="status">Contract route</span>
+    <h1>Agronomy location summary</h1>
+    <p>Query the first frontend contract for ET, soil, water quality, irrigation, and risk context.</p>
+  </header>
+
+  <form class="card form-row" (ngSubmit)="loadSummary()">
+    <div class="field">
+      <label for="latitude">Latitude</label>
+      <input id="latitude" name="latitude" type="number" step="0.0001" required [(ngModel)]="latitude">
+    </div>
+    <div class="field">
+      <label for="longitude">Longitude</label>
+      <input id="longitude" name="longitude" type="number" step="0.0001" required [(ngModel)]="longitude">
+    </div>
+    <div class="field">
+      <label for="crop">Crop</label>
+      <select id="crop" name="crop" required [(ngModel)]="crop">
+        <option value="almond">Almond</option>
+        <option value="tomato">Tomato</option>
+        <option value="grape">Wine grape</option>
+        <option value="pistachio">Pistachio</option>
+      </select>
+    </div>
+    <button class="primary-button" type="submit" [disabled]="loading() || !canSubmit()">Load summary</button>
+  </form>
+
+  @if (loading()) {
+    <div class="message loading" role="status">Loading agronomy summary...</div>
+  }
+
+  @if (error()) {
+    <div class="message error" role="alert">{{ error() }}</div>
+  }
+
+  @if (summary(); as data) {
+    <div class="grid">
+      <article class="card panel-wide">
+        <h2>{{ data.county ?? 'Unknown county' }}</h2>
+        <p>Resolved {{ data.resolvedAt | date: 'medium' }} from the local Express API contract.</p>
+        @if (hasWarnings()) {
+          <span class="status warning">Warnings available</span>
+        } @else {
+          <span class="status">All sources healthy</span>
+        }
+      </article>
+
+      <article class="card metric">
+        <span>Soil</span>
+        <strong>{{ data.soil?.texture ?? 'Unknown' }}</strong>
+      </article>
+
+      <article class="card metric">
+        <span>Root zone</span>
+        <strong>{{ data.soil?.rootZoneDepthIn ?? 0 | number: '1.0-0' }} in</strong>
+      </article>
+
+      <article class="card metric">
+        <span>Crop ET</span>
+        <strong>{{ data.irrigation?.cropEt ?? 0 | number: '1.2-2' }} in/day</strong>
+      </article>
+
+      <article class="card metric">
+        <span>Rain offset</span>
+        <strong>{{ data.irrigation?.forecastRainIn ?? 0 | number: '1.2-2' }} in</strong>
+      </article>
+    </div>
+  }
+</section>

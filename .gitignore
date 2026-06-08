@@ -14,9 +14,15 @@
 
 # Node
 /node_modules
+**/node_modules/
 npm-debug.log
 yarn-error.log
 /logs
+webapp/logs/
+webapp/dist/
+webapp/.angular/cache/
+webapp/test-results/
+webapp/playwright-report/
 
 # Environment / Netlify
 .env
