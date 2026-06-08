@@ -1,0 +1,52 @@
+<section class="page">
+  <header class="page-header">
+    <span class="status">Angular 22 rewrite</span>
+    <h1>Field intelligence dashboard</h1>
+    <p>Core agronomy signals for Fresno County almond operations, backed by the local Node contract server.</p>
+  </header>
+
+  @if (loading()) {
+    <div class="message loading" role="status">Loading dashboard contract data...</div>
+  }
+
+  @if (error()) {
+    <div class="message error" role="alert">{{ error() }}</div>
+  }
+
+  @if (summary(); as data) {
+    <div class="grid">
+      <article class="card hero-card">
+        <div>
+          <span class="status" [class.warning]="recommendation()?.heatRisk">{{ riskLevel() }}</span>
+          <h2>{{ data.county ?? 'California' }} almond block</h2>
+          <p>
+            Resolved {{ data.resolvedAt | date: 'medium' }} near
+            {{ data.location.latitude | number: '1.2-2' }},
+            {{ data.location.longitude | number: '1.2-2' }}.
+          </p>
+        </div>
+        <a class="secondary-button" routerLink="/agronomy">Tune location</a>
+      </article>
+
+      <article class="card metric">
+        <span>Reference ET</span>
+        <strong>{{ data.evapotranspiration?.eto ?? 0 | number: '1.2-2' }} in/day</strong>
+      </article>
+
+      <article class="card metric">
+        <span>Gross irrigation</span>
+        <strong>{{ recommendation()?.grossIrrigationIn ?? 0 | number: '1.2-2' }} in</strong>
+      </article>
+
+      <article class="card metric">
+        <span>System efficiency</span>
+        <strong>{{ recommendation()?.systemEfficiency ?? 0 | percent: '1.0-0' }}</strong>
+      </article>
+
+      <article class="card metric">
+        <span>Next interval</span>
+        <strong>{{ recommendation()?.intervalDays ?? 0 }} days</strong>
+      </article>
+    </div>
+  }
+</section>

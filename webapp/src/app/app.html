@@ -1,0 +1,27 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/" aria-label="Agronomy Studio home">
+      <span class="brand-mark" aria-hidden="true">AS</span>
+      <span>
+        <strong>Agronomy Studio</strong>
+        <small>California field intelligence</small>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Primary navigation">
+      @for (item of navItems; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+        >
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+  </header>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>

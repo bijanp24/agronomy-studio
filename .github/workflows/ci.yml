@@ -39,6 +39,45 @@ jobs:
       - name: Test
         run: npm test
 
+  webapp:
+    name: WebApp (Angular 22)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webapp
+        run: npm ci
+
+      - name: Type-check
+        working-directory: webapp
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: webapp
+        run: npm test
+
+      - name: Build
+        working-directory: webapp
+        run: npm run build
+
+      - name: Install Playwright
+        working-directory: webapp
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        working-directory: webapp
+        run: npm run e2e
+
   verify:
     name: Build
     runs-on: ubuntu-latest
